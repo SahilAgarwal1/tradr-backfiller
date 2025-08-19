@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -31,7 +32,7 @@ func NewHandler(stream *StreamManager, metrics *metrics.Collector) *Handler {
 
 // HandleCreateRecord converts a create operation to a gRPC request and sends it
 // This is called by the backfiller when a new record is created
-func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid) error {
+func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
@@ -55,14 +56,20 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 		return fmt.Errorf("nil CID")
 	}
 
+	// Parse the path to extract collection and rkey
+	// Path format: "collection/rkey" e.g., "app.bsky.feed.post/3k2yihcrp6f2c"
+	collection, rkey := h.parsePath(path)
+
 	// Create the gRPC request
 	req := &pb.OperationRequest{
-		Repo:      repo,
-		Rev:       rev,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Repo:       repo,
+		Rev:        rev,
+		Collection: collection,
+		Rkey:       rkey,
+		Time:       time.Now().UTC().Format(time.RFC3339),
+		Seq:        seq,
 		Operation: &pb.OperationRequest_Create{
 			Create: &pb.CreateOperation{
-				Path:   path,
 				Record: *rec,
 				Cid:    cid.String(),
 			},
@@ -91,7 +98,7 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 
 // HandleUpdateRecord converts an update operation to a gRPC request and sends it
 // This is called by the backfiller when an existing record is updated
-func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid) error {
+func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
@@ -115,14 +122,19 @@ func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev strin
 		return fmt.Errorf("nil CID")
 	}
 
+	// Parse the path to extract collection and rkey
+	collection, rkey := h.parsePath(path)
+
 	// Create the gRPC request
 	req := &pb.OperationRequest{
-		Repo:      repo,
-		Rev:       rev,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Repo:       repo,
+		Rev:        rev,
+		Collection: collection,
+		Rkey:       rkey,
+		Time:       time.Now().UTC().Format(time.RFC3339),
+		Seq:        seq,
 		Operation: &pb.OperationRequest_Update{
 			Update: &pb.UpdateOperation{
-				Path:   path,
 				Record: *rec,
 				Cid:    cid.String(),
 				// PrevCid could be added here if we track it
@@ -151,7 +163,7 @@ func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev strin
 
 // HandleDeleteRecord converts a delete operation to a gRPC request and sends it
 // This is called by the backfiller when a record is deleted
-func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev string, path string) error {
+func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev string, path string, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
@@ -169,14 +181,20 @@ func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev strin
 		return fmt.Errorf("empty record path")
 	}
 
+	// Parse the path to extract collection and rkey
+	collection, rkey := h.parsePath(path)
+
 	// Create the gRPC request
 	req := &pb.OperationRequest{
-		Repo:      repo,
-		Rev:       rev,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Repo:       repo,
+		Rev:        rev,
+		Collection: collection,
+		Rkey:       rkey,
+		Time:       time.Now().UTC().Format(time.RFC3339),
+		Seq:        seq,
 		Operation: &pb.OperationRequest_Delete{
 			Delete: &pb.DeleteOperation{
-				Path: path,
+				// PrevCid could be added here if we track it
 			},
 		},
 	}
@@ -196,6 +214,17 @@ func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev strin
 	}
 
 	return nil
+}
+
+// parsePath splits a record path into collection and rkey
+// Path format: "collection/rkey" e.g., "app.bsky.feed.post/3k2yihcrp6f2c"
+func (h *Handler) parsePath(path string) (collection string, rkey string) {
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	// If no slash found, treat the whole path as collection
+	return path, ""
 }
 
 // GetStats returns statistics about the handler's operation

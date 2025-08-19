@@ -30,7 +30,7 @@ type StreamManager struct {
 	connections []*grpc.ClientConn
 	
 	// streams holds the active bidirectional streams
-	streams []pb.IngesterService_StreamCommitsClient
+	streams []pb.IngesterService_StreamOperationsClient
 	
 	// mu protects concurrent access to streams and connections
 	mu sync.RWMutex
@@ -51,7 +51,7 @@ type StreamManager struct {
 	metrics *metrics.Collector
 	
 	// buffer holds operations during disconnection
-	buffer chan *pb.CommitRequest
+	buffer chan *pb.OperationRequest
 	
 	// healthy tracks which connections are healthy
 	healthy []bool
@@ -73,13 +73,13 @@ func NewStreamManager(ctx context.Context, addresses []string, cfg config.GRPCCo
 		addresses:     addresses,
 		clients:       make([]pb.IngesterServiceClient, len(addresses)),
 		connections:   make([]*grpc.ClientConn, len(addresses)),
-		streams:       make([]pb.IngesterService_StreamCommitsClient, len(addresses)),
+		streams:       make([]pb.IngesterService_StreamOperationsClient, len(addresses)),
 		healthy:       make([]bool, len(addresses)),
 		ctx:          ctx,
 		cancel:       cancel,
 		config:       cfg,
 		metrics:      metrics,
-		buffer:       make(chan *pb.CommitRequest, cfg.MaxMessageSize/1024), // Buffer size based on message size
+		buffer:       make(chan *pb.OperationRequest, cfg.MaxMessageSize/1024), // Buffer size based on message size
 		reconnectChan: make(chan int, len(addresses)),
 	}
 
@@ -171,7 +171,7 @@ func (sm *StreamManager) connect(index int, address string) error {
 	}
 
 	// Create a bidirectional stream
-	stream, err := client.StreamCommits(sm.ctx)
+	stream, err := client.StreamOperations(sm.ctx)
 	if err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to create stream for %s: %w", address, err)
@@ -198,7 +198,7 @@ func (sm *StreamManager) connect(index int, address string) error {
 
 // Send sends an operation request to one of the connected Ingesters
 // It uses round-robin load balancing to distribute requests
-func (sm *StreamManager) Send(ctx context.Context, req *pb.CommitRequest) error {
+func (sm *StreamManager) Send(ctx context.Context, req *pb.OperationRequest) error {
 	// Try to send directly first
 	if err := sm.sendDirect(ctx, req); err != nil {
 		// If direct send fails, buffer the request
@@ -218,7 +218,7 @@ func (sm *StreamManager) Send(ctx context.Context, req *pb.CommitRequest) error 
 }
 
 // sendDirect attempts to send a request directly to a healthy stream
-func (sm *StreamManager) sendDirect(ctx context.Context, req *pb.CommitRequest) error {
+func (sm *StreamManager) sendDirect(ctx context.Context, req *pb.OperationRequest) error {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
@@ -274,7 +274,7 @@ func (sm *StreamManager) sendDirect(ctx context.Context, req *pb.CommitRequest) 
 }
 
 // handleResponses processes responses from an Ingester stream
-func (sm *StreamManager) handleResponses(index int, stream pb.IngesterService_StreamCommitsClient) {
+func (sm *StreamManager) handleResponses(index int, stream pb.IngesterService_StreamOperationsClient) {
 	for {
 		// Receive response from the stream
 		resp, err := stream.Recv()
@@ -306,8 +306,7 @@ func (sm *StreamManager) handleResponses(index int, stream pb.IngesterService_St
 			sm.metrics.IncrementErrorCount("response", fmt.Errorf(resp.Error))
 		} else {
 			log.Debug().
-				Int64("sequence", resp.GetSequence()).
-				Str("processed_at", resp.ProcessedAt).
+				Int64("sequence", resp.Seq).
 				Msg("Operation acknowledged")
 			sm.metrics.IncrementAcknowledgedCount()
 		}

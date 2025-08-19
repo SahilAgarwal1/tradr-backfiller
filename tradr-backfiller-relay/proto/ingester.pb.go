@@ -21,8 +21,394 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// OperationRequest represents a single operation (create/update/delete)
+// This is more granular than commits and allows for filtering
+type OperationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// DID of the repository
+	Repo string `protobuf:"bytes,1,opt,name=repo,proto3" json:"repo,omitempty"`
+	// Collection name (e.g., "app.bsky.feed.post")
+	Collection string `protobuf:"bytes,2,opt,name=collection,proto3" json:"collection,omitempty"`
+	// Record key
+	Rkey string `protobuf:"bytes,3,opt,name=rkey,proto3" json:"rkey,omitempty"`
+	// Operation-specific data
+	//
+	// Types that are valid to be assigned to Operation:
+	//
+	//	*OperationRequest_Create
+	//	*OperationRequest_Update
+	//	*OperationRequest_Delete
+	Operation isOperationRequest_Operation `protobuf_oneof:"operation"`
+	// Sequence number from firehose
+	Seq int64 `protobuf:"varint,7,opt,name=seq,proto3" json:"seq,omitempty"`
+	// ISO 8601 timestamp
+	Time string `protobuf:"bytes,8,opt,name=time,proto3" json:"time,omitempty"`
+	// Revision of the repo at this operation
+	Rev           string `protobuf:"bytes,9,opt,name=rev,proto3" json:"rev,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OperationRequest) Reset() {
+	*x = OperationRequest{}
+	mi := &file_proto_ingester_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OperationRequest) ProtoMessage() {}
+
+func (x *OperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ingester_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OperationRequest.ProtoReflect.Descriptor instead.
+func (*OperationRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ingester_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *OperationRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
+func (x *OperationRequest) GetCollection() string {
+	if x != nil {
+		return x.Collection
+	}
+	return ""
+}
+
+func (x *OperationRequest) GetRkey() string {
+	if x != nil {
+		return x.Rkey
+	}
+	return ""
+}
+
+func (x *OperationRequest) GetOperation() isOperationRequest_Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+func (x *OperationRequest) GetCreate() *CreateOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*OperationRequest_Create); ok {
+			return x.Create
+		}
+	}
+	return nil
+}
+
+func (x *OperationRequest) GetUpdate() *UpdateOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*OperationRequest_Update); ok {
+			return x.Update
+		}
+	}
+	return nil
+}
+
+func (x *OperationRequest) GetDelete() *DeleteOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*OperationRequest_Delete); ok {
+			return x.Delete
+		}
+	}
+	return nil
+}
+
+func (x *OperationRequest) GetSeq() int64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *OperationRequest) GetTime() string {
+	if x != nil {
+		return x.Time
+	}
+	return ""
+}
+
+func (x *OperationRequest) GetRev() string {
+	if x != nil {
+		return x.Rev
+	}
+	return ""
+}
+
+type isOperationRequest_Operation interface {
+	isOperationRequest_Operation()
+}
+
+type OperationRequest_Create struct {
+	Create *CreateOperation `protobuf:"bytes,4,opt,name=create,proto3,oneof"`
+}
+
+type OperationRequest_Update struct {
+	Update *UpdateOperation `protobuf:"bytes,5,opt,name=update,proto3,oneof"`
+}
+
+type OperationRequest_Delete struct {
+	Delete *DeleteOperation `protobuf:"bytes,6,opt,name=delete,proto3,oneof"`
+}
+
+func (*OperationRequest_Create) isOperationRequest_Operation() {}
+
+func (*OperationRequest_Update) isOperationRequest_Operation() {}
+
+func (*OperationRequest_Delete) isOperationRequest_Operation() {}
+
+// CreateOperation for new records
+type CreateOperation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The actual record data (CBOR encoded)
+	Record []byte `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	// CID of the record
+	Cid           string `protobuf:"bytes,2,opt,name=cid,proto3" json:"cid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateOperation) Reset() {
+	*x = CreateOperation{}
+	mi := &file_proto_ingester_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateOperation) ProtoMessage() {}
+
+func (x *CreateOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ingester_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateOperation.ProtoReflect.Descriptor instead.
+func (*CreateOperation) Descriptor() ([]byte, []int) {
+	return file_proto_ingester_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CreateOperation) GetRecord() []byte {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+func (x *CreateOperation) GetCid() string {
+	if x != nil {
+		return x.Cid
+	}
+	return ""
+}
+
+// UpdateOperation for modified records
+type UpdateOperation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The updated record data (CBOR encoded)
+	Record []byte `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	// New CID of the record
+	Cid string `protobuf:"bytes,2,opt,name=cid,proto3" json:"cid,omitempty"`
+	// Previous CID (for verification)
+	PrevCid       *string `protobuf:"bytes,3,opt,name=prev_cid,json=prevCid,proto3,oneof" json:"prev_cid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateOperation) Reset() {
+	*x = UpdateOperation{}
+	mi := &file_proto_ingester_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateOperation) ProtoMessage() {}
+
+func (x *UpdateOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ingester_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateOperation.ProtoReflect.Descriptor instead.
+func (*UpdateOperation) Descriptor() ([]byte, []int) {
+	return file_proto_ingester_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UpdateOperation) GetRecord() []byte {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+func (x *UpdateOperation) GetCid() string {
+	if x != nil {
+		return x.Cid
+	}
+	return ""
+}
+
+func (x *UpdateOperation) GetPrevCid() string {
+	if x != nil && x.PrevCid != nil {
+		return *x.PrevCid
+	}
+	return ""
+}
+
+// DeleteOperation for removed records
+type DeleteOperation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Previous CID of the deleted record
+	PrevCid       *string `protobuf:"bytes,1,opt,name=prev_cid,json=prevCid,proto3,oneof" json:"prev_cid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteOperation) Reset() {
+	*x = DeleteOperation{}
+	mi := &file_proto_ingester_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteOperation) ProtoMessage() {}
+
+func (x *DeleteOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ingester_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteOperation.ProtoReflect.Descriptor instead.
+func (*DeleteOperation) Descriptor() ([]byte, []int) {
+	return file_proto_ingester_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DeleteOperation) GetPrevCid() string {
+	if x != nil && x.PrevCid != nil {
+		return *x.PrevCid
+	}
+	return ""
+}
+
+// OperationResponse acknowledges processing of an operation
+type OperationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the operation was successfully processed
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// Error message if processing failed
+	Error string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	// Sequence number to acknowledge
+	Seq           int64 `protobuf:"varint,3,opt,name=seq,proto3" json:"seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OperationResponse) Reset() {
+	*x = OperationResponse{}
+	mi := &file_proto_ingester_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OperationResponse) ProtoMessage() {}
+
+func (x *OperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ingester_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OperationResponse.ProtoReflect.Descriptor instead.
+func (*OperationResponse) Descriptor() ([]byte, []int) {
+	return file_proto_ingester_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *OperationResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *OperationResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *OperationResponse) GetSeq() int64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
 // CommitRequest represents a commit from the firehose or backfill
 // This matches the structure of com.atproto.sync.subscribeRepos#commit
+// (Keeping this for potential future use but not used in current service)
 type CommitRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// DID of the repository this commit belongs to
@@ -53,7 +439,7 @@ type CommitRequest struct {
 
 func (x *CommitRequest) Reset() {
 	*x = CommitRequest{}
-	mi := &file_proto_ingester_proto_msgTypes[0]
+	mi := &file_proto_ingester_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -65,7 +451,7 @@ func (x *CommitRequest) String() string {
 func (*CommitRequest) ProtoMessage() {}
 
 func (x *CommitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[0]
+	mi := &file_proto_ingester_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -78,7 +464,7 @@ func (x *CommitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitRequest.ProtoReflect.Descriptor instead.
 func (*CommitRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{0}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CommitRequest) GetRepo() string {
@@ -176,7 +562,7 @@ type RepoOp struct {
 
 func (x *RepoOp) Reset() {
 	*x = RepoOp{}
-	mi := &file_proto_ingester_proto_msgTypes[1]
+	mi := &file_proto_ingester_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -188,7 +574,7 @@ func (x *RepoOp) String() string {
 func (*RepoOp) ProtoMessage() {}
 
 func (x *RepoOp) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[1]
+	mi := &file_proto_ingester_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -201,7 +587,7 @@ func (x *RepoOp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoOp.ProtoReflect.Descriptor instead.
 func (*RepoOp) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{1}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RepoOp) GetAction() string {
@@ -249,7 +635,7 @@ type CommitResponse struct {
 
 func (x *CommitResponse) Reset() {
 	*x = CommitResponse{}
-	mi := &file_proto_ingester_proto_msgTypes[2]
+	mi := &file_proto_ingester_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +647,7 @@ func (x *CommitResponse) String() string {
 func (*CommitResponse) ProtoMessage() {}
 
 func (x *CommitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[2]
+	mi := &file_proto_ingester_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,7 +660,7 @@ func (x *CommitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitResponse.ProtoReflect.Descriptor instead.
 func (*CommitResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{2}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CommitResponse) GetSuccess() bool {
@@ -314,7 +700,7 @@ type HealthCheckRequest struct {
 
 func (x *HealthCheckRequest) Reset() {
 	*x = HealthCheckRequest{}
-	mi := &file_proto_ingester_proto_msgTypes[3]
+	mi := &file_proto_ingester_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +712,7 @@ func (x *HealthCheckRequest) String() string {
 func (*HealthCheckRequest) ProtoMessage() {}
 
 func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[3]
+	mi := &file_proto_ingester_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +725,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{3}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{8}
 }
 
 // HealthCheckResponse indicates the health status of the ingester
@@ -357,7 +743,7 @@ type HealthCheckResponse struct {
 
 func (x *HealthCheckResponse) Reset() {
 	*x = HealthCheckResponse{}
-	mi := &file_proto_ingester_proto_msgTypes[4]
+	mi := &file_proto_ingester_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -369,7 +755,7 @@ func (x *HealthCheckResponse) String() string {
 func (*HealthCheckResponse) ProtoMessage() {}
 
 func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[4]
+	mi := &file_proto_ingester_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -382,7 +768,7 @@ func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
 func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{4}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *HealthCheckResponse) GetHealthy() bool {
@@ -419,7 +805,7 @@ type IdentityEvent struct {
 
 func (x *IdentityEvent) Reset() {
 	*x = IdentityEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[5]
+	mi := &file_proto_ingester_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +817,7 @@ func (x *IdentityEvent) String() string {
 func (*IdentityEvent) ProtoMessage() {}
 
 func (x *IdentityEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[5]
+	mi := &file_proto_ingester_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -444,7 +830,7 @@ func (x *IdentityEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IdentityEvent.ProtoReflect.Descriptor instead.
 func (*IdentityEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{5}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *IdentityEvent) GetDid() string {
@@ -489,7 +875,7 @@ type AccountEvent struct {
 
 func (x *AccountEvent) Reset() {
 	*x = AccountEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[6]
+	mi := &file_proto_ingester_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +887,7 @@ func (x *AccountEvent) String() string {
 func (*AccountEvent) ProtoMessage() {}
 
 func (x *AccountEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[6]
+	mi := &file_proto_ingester_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +900,7 @@ func (x *AccountEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountEvent.ProtoReflect.Descriptor instead.
 func (*AccountEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{6}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AccountEvent) GetDid() string {
@@ -565,7 +951,7 @@ type HandleEvent struct {
 
 func (x *HandleEvent) Reset() {
 	*x = HandleEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[7]
+	mi := &file_proto_ingester_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +963,7 @@ func (x *HandleEvent) String() string {
 func (*HandleEvent) ProtoMessage() {}
 
 func (x *HandleEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[7]
+	mi := &file_proto_ingester_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +976,7 @@ func (x *HandleEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HandleEvent.ProtoReflect.Descriptor instead.
 func (*HandleEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{7}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *HandleEvent) GetDid() string {
@@ -633,7 +1019,7 @@ type TombstoneEvent struct {
 
 func (x *TombstoneEvent) Reset() {
 	*x = TombstoneEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[8]
+	mi := &file_proto_ingester_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +1031,7 @@ func (x *TombstoneEvent) String() string {
 func (*TombstoneEvent) ProtoMessage() {}
 
 func (x *TombstoneEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[8]
+	mi := &file_proto_ingester_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +1044,7 @@ func (x *TombstoneEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TombstoneEvent.ProtoReflect.Descriptor instead.
 func (*TombstoneEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{8}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TombstoneEvent) GetDid() string {
@@ -695,7 +1081,7 @@ type MigrateEvent struct {
 
 func (x *MigrateEvent) Reset() {
 	*x = MigrateEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[9]
+	mi := &file_proto_ingester_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +1093,7 @@ func (x *MigrateEvent) String() string {
 func (*MigrateEvent) ProtoMessage() {}
 
 func (x *MigrateEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[9]
+	mi := &file_proto_ingester_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +1106,7 @@ func (x *MigrateEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MigrateEvent.ProtoReflect.Descriptor instead.
 func (*MigrateEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{9}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MigrateEvent) GetDid() string {
@@ -762,7 +1148,7 @@ type InfoEvent struct {
 
 func (x *InfoEvent) Reset() {
 	*x = InfoEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[10]
+	mi := &file_proto_ingester_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -774,7 +1160,7 @@ func (x *InfoEvent) String() string {
 func (*InfoEvent) ProtoMessage() {}
 
 func (x *InfoEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[10]
+	mi := &file_proto_ingester_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -787,7 +1173,7 @@ func (x *InfoEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InfoEvent.ProtoReflect.Descriptor instead.
 func (*InfoEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{10}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *InfoEvent) GetName() string {
@@ -823,7 +1209,7 @@ type FirehoseEvent struct {
 
 func (x *FirehoseEvent) Reset() {
 	*x = FirehoseEvent{}
-	mi := &file_proto_ingester_proto_msgTypes[11]
+	mi := &file_proto_ingester_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -835,7 +1221,7 @@ func (x *FirehoseEvent) String() string {
 func (*FirehoseEvent) ProtoMessage() {}
 
 func (x *FirehoseEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ingester_proto_msgTypes[11]
+	mi := &file_proto_ingester_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -848,7 +1234,7 @@ func (x *FirehoseEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FirehoseEvent.ProtoReflect.Descriptor instead.
 func (*FirehoseEvent) Descriptor() ([]byte, []int) {
-	return file_proto_ingester_proto_rawDescGZIP(), []int{11}
+	return file_proto_ingester_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *FirehoseEvent) GetEvent() isFirehoseEvent_Event {
@@ -971,7 +1357,35 @@ var File_proto_ingester_proto protoreflect.FileDescriptor
 
 const file_proto_ingester_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/ingester.proto\x12\vingester.v1\"\xb6\x02\n" +
+	"\x14proto/ingester.proto\x12\vingester.v1\"\xc7\x02\n" +
+	"\x10OperationRequest\x12\x12\n" +
+	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x1e\n" +
+	"\n" +
+	"collection\x18\x02 \x01(\tR\n" +
+	"collection\x12\x12\n" +
+	"\x04rkey\x18\x03 \x01(\tR\x04rkey\x126\n" +
+	"\x06create\x18\x04 \x01(\v2\x1c.ingester.v1.CreateOperationH\x00R\x06create\x126\n" +
+	"\x06update\x18\x05 \x01(\v2\x1c.ingester.v1.UpdateOperationH\x00R\x06update\x126\n" +
+	"\x06delete\x18\x06 \x01(\v2\x1c.ingester.v1.DeleteOperationH\x00R\x06delete\x12\x10\n" +
+	"\x03seq\x18\a \x01(\x03R\x03seq\x12\x12\n" +
+	"\x04time\x18\b \x01(\tR\x04time\x12\x10\n" +
+	"\x03rev\x18\t \x01(\tR\x03revB\v\n" +
+	"\toperation\";\n" +
+	"\x0fCreateOperation\x12\x16\n" +
+	"\x06record\x18\x01 \x01(\fR\x06record\x12\x10\n" +
+	"\x03cid\x18\x02 \x01(\tR\x03cid\"h\n" +
+	"\x0fUpdateOperation\x12\x16\n" +
+	"\x06record\x18\x01 \x01(\fR\x06record\x12\x10\n" +
+	"\x03cid\x18\x02 \x01(\tR\x03cid\x12\x1e\n" +
+	"\bprev_cid\x18\x03 \x01(\tH\x00R\aprevCid\x88\x01\x01B\v\n" +
+	"\t_prev_cid\">\n" +
+	"\x0fDeleteOperation\x12\x1e\n" +
+	"\bprev_cid\x18\x01 \x01(\tH\x00R\aprevCid\x88\x01\x01B\v\n" +
+	"\t_prev_cid\"U\n" +
+	"\x11OperationResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12\x10\n" +
+	"\x03seq\x18\x03 \x01(\x03R\x03seq\"\xb6\x02\n" +
 	"\rCommitRequest\x12\x12\n" +
 	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x10\n" +
 	"\x03rev\x18\x02 \x01(\tR\x03rev\x12\x19\n" +
@@ -1046,9 +1460,9 @@ const file_proto_ingester_proto_rawDesc = "" +
 	"\ttombstone\x18\x05 \x01(\v2\x1b.ingester.v1.TombstoneEventH\x00R\ttombstone\x125\n" +
 	"\amigrate\x18\x06 \x01(\v2\x19.ingester.v1.MigrateEventH\x00R\amigrate\x12,\n" +
 	"\x04info\x18\a \x01(\v2\x16.ingester.v1.InfoEventH\x00R\x04infoB\a\n" +
-	"\x05event2\xb1\x01\n" +
-	"\x0fIngesterService\x12L\n" +
-	"\rStreamCommits\x12\x1a.ingester.v1.CommitRequest\x1a\x1b.ingester.v1.CommitResponse(\x010\x01\x12P\n" +
+	"\x05event2\xba\x01\n" +
+	"\x0fIngesterService\x12U\n" +
+	"\x10StreamOperations\x12\x1d.ingester.v1.OperationRequest\x1a\x1e.ingester.v1.OperationResponse(\x010\x01\x12P\n" +
 	"\vHealthCheck\x12\x1f.ingester.v1.HealthCheckRequest\x1a .ingester.v1.HealthCheckResponseB$Z\"tradr-backfiller-relay/proto;protob\x06proto3"
 
 var (
@@ -1063,39 +1477,47 @@ func file_proto_ingester_proto_rawDescGZIP() []byte {
 	return file_proto_ingester_proto_rawDescData
 }
 
-var file_proto_ingester_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_proto_ingester_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_proto_ingester_proto_goTypes = []any{
-	(*CommitRequest)(nil),       // 0: ingester.v1.CommitRequest
-	(*RepoOp)(nil),              // 1: ingester.v1.RepoOp
-	(*CommitResponse)(nil),      // 2: ingester.v1.CommitResponse
-	(*HealthCheckRequest)(nil),  // 3: ingester.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil), // 4: ingester.v1.HealthCheckResponse
-	(*IdentityEvent)(nil),       // 5: ingester.v1.IdentityEvent
-	(*AccountEvent)(nil),        // 6: ingester.v1.AccountEvent
-	(*HandleEvent)(nil),         // 7: ingester.v1.HandleEvent
-	(*TombstoneEvent)(nil),      // 8: ingester.v1.TombstoneEvent
-	(*MigrateEvent)(nil),        // 9: ingester.v1.MigrateEvent
-	(*InfoEvent)(nil),           // 10: ingester.v1.InfoEvent
-	(*FirehoseEvent)(nil),       // 11: ingester.v1.FirehoseEvent
+	(*OperationRequest)(nil),    // 0: ingester.v1.OperationRequest
+	(*CreateOperation)(nil),     // 1: ingester.v1.CreateOperation
+	(*UpdateOperation)(nil),     // 2: ingester.v1.UpdateOperation
+	(*DeleteOperation)(nil),     // 3: ingester.v1.DeleteOperation
+	(*OperationResponse)(nil),   // 4: ingester.v1.OperationResponse
+	(*CommitRequest)(nil),       // 5: ingester.v1.CommitRequest
+	(*RepoOp)(nil),              // 6: ingester.v1.RepoOp
+	(*CommitResponse)(nil),      // 7: ingester.v1.CommitResponse
+	(*HealthCheckRequest)(nil),  // 8: ingester.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil), // 9: ingester.v1.HealthCheckResponse
+	(*IdentityEvent)(nil),       // 10: ingester.v1.IdentityEvent
+	(*AccountEvent)(nil),        // 11: ingester.v1.AccountEvent
+	(*HandleEvent)(nil),         // 12: ingester.v1.HandleEvent
+	(*TombstoneEvent)(nil),      // 13: ingester.v1.TombstoneEvent
+	(*MigrateEvent)(nil),        // 14: ingester.v1.MigrateEvent
+	(*InfoEvent)(nil),           // 15: ingester.v1.InfoEvent
+	(*FirehoseEvent)(nil),       // 16: ingester.v1.FirehoseEvent
 }
 var file_proto_ingester_proto_depIdxs = []int32{
-	1,  // 0: ingester.v1.CommitRequest.ops:type_name -> ingester.v1.RepoOp
-	0,  // 1: ingester.v1.FirehoseEvent.commit:type_name -> ingester.v1.CommitRequest
-	5,  // 2: ingester.v1.FirehoseEvent.identity:type_name -> ingester.v1.IdentityEvent
-	6,  // 3: ingester.v1.FirehoseEvent.account:type_name -> ingester.v1.AccountEvent
-	7,  // 4: ingester.v1.FirehoseEvent.handle:type_name -> ingester.v1.HandleEvent
-	8,  // 5: ingester.v1.FirehoseEvent.tombstone:type_name -> ingester.v1.TombstoneEvent
-	9,  // 6: ingester.v1.FirehoseEvent.migrate:type_name -> ingester.v1.MigrateEvent
-	10, // 7: ingester.v1.FirehoseEvent.info:type_name -> ingester.v1.InfoEvent
-	0,  // 8: ingester.v1.IngesterService.StreamCommits:input_type -> ingester.v1.CommitRequest
-	3,  // 9: ingester.v1.IngesterService.HealthCheck:input_type -> ingester.v1.HealthCheckRequest
-	2,  // 10: ingester.v1.IngesterService.StreamCommits:output_type -> ingester.v1.CommitResponse
-	4,  // 11: ingester.v1.IngesterService.HealthCheck:output_type -> ingester.v1.HealthCheckResponse
-	10, // [10:12] is the sub-list for method output_type
-	8,  // [8:10] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	1,  // 0: ingester.v1.OperationRequest.create:type_name -> ingester.v1.CreateOperation
+	2,  // 1: ingester.v1.OperationRequest.update:type_name -> ingester.v1.UpdateOperation
+	3,  // 2: ingester.v1.OperationRequest.delete:type_name -> ingester.v1.DeleteOperation
+	6,  // 3: ingester.v1.CommitRequest.ops:type_name -> ingester.v1.RepoOp
+	5,  // 4: ingester.v1.FirehoseEvent.commit:type_name -> ingester.v1.CommitRequest
+	10, // 5: ingester.v1.FirehoseEvent.identity:type_name -> ingester.v1.IdentityEvent
+	11, // 6: ingester.v1.FirehoseEvent.account:type_name -> ingester.v1.AccountEvent
+	12, // 7: ingester.v1.FirehoseEvent.handle:type_name -> ingester.v1.HandleEvent
+	13, // 8: ingester.v1.FirehoseEvent.tombstone:type_name -> ingester.v1.TombstoneEvent
+	14, // 9: ingester.v1.FirehoseEvent.migrate:type_name -> ingester.v1.MigrateEvent
+	15, // 10: ingester.v1.FirehoseEvent.info:type_name -> ingester.v1.InfoEvent
+	0,  // 11: ingester.v1.IngesterService.StreamOperations:input_type -> ingester.v1.OperationRequest
+	8,  // 12: ingester.v1.IngesterService.HealthCheck:input_type -> ingester.v1.HealthCheckRequest
+	4,  // 13: ingester.v1.IngesterService.StreamOperations:output_type -> ingester.v1.OperationResponse
+	9,  // 14: ingester.v1.IngesterService.HealthCheck:output_type -> ingester.v1.HealthCheckResponse
+	13, // [13:15] is the sub-list for method output_type
+	11, // [11:13] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_proto_ingester_proto_init() }
@@ -1103,12 +1525,19 @@ func file_proto_ingester_proto_init() {
 	if File_proto_ingester_proto != nil {
 		return
 	}
-	file_proto_ingester_proto_msgTypes[0].OneofWrappers = []any{}
-	file_proto_ingester_proto_msgTypes[1].OneofWrappers = []any{}
+	file_proto_ingester_proto_msgTypes[0].OneofWrappers = []any{
+		(*OperationRequest_Create)(nil),
+		(*OperationRequest_Update)(nil),
+		(*OperationRequest_Delete)(nil),
+	}
+	file_proto_ingester_proto_msgTypes[2].OneofWrappers = []any{}
+	file_proto_ingester_proto_msgTypes[3].OneofWrappers = []any{}
 	file_proto_ingester_proto_msgTypes[5].OneofWrappers = []any{}
 	file_proto_ingester_proto_msgTypes[6].OneofWrappers = []any{}
 	file_proto_ingester_proto_msgTypes[10].OneofWrappers = []any{}
-	file_proto_ingester_proto_msgTypes[11].OneofWrappers = []any{
+	file_proto_ingester_proto_msgTypes[11].OneofWrappers = []any{}
+	file_proto_ingester_proto_msgTypes[15].OneofWrappers = []any{}
+	file_proto_ingester_proto_msgTypes[16].OneofWrappers = []any{
 		(*FirehoseEvent_Commit)(nil),
 		(*FirehoseEvent_Identity)(nil),
 		(*FirehoseEvent_Account)(nil),
@@ -1123,7 +1552,7 @@ func file_proto_ingester_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ingester_proto_rawDesc), len(file_proto_ingester_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

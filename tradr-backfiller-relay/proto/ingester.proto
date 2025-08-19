@@ -4,19 +4,88 @@ package ingester.v1;
 
 option go_package = "tradr-backfiller-relay/proto;proto";
 
-// IngesterService handles streaming commits from the backfiller relay
-// This mimics the AT Protocol firehose structure
+// IngesterService handles streaming operations from the backfiller relay
+// This provides filtered, pre-processed operations rather than raw commits
 service IngesterService {
-  // StreamCommits creates a bidirectional stream for continuous commit processing
-  // The relay sends commits (which contain multiple operations), the ingester responds with acknowledgments
-  rpc StreamCommits(stream CommitRequest) returns (stream CommitResponse);
+  // StreamOperations creates a bidirectional stream for continuous operation processing
+  // The relay sends individual operations, the ingester responds with acknowledgments
+  rpc StreamOperations(stream OperationRequest) returns (stream OperationResponse);
   
-  // HealthCheck verifies the ingester is running and ready to accept commits
+  // HealthCheck verifies the ingester is running and ready to accept operations
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// OperationRequest represents a single operation (create/update/delete)
+// This is more granular than commits and allows for filtering
+message OperationRequest {
+  // DID of the repository
+  string repo = 1;
+  
+  // Collection name (e.g., "app.bsky.feed.post")
+  string collection = 2;
+  
+  // Record key
+  string rkey = 3;
+  
+  // Operation-specific data
+  oneof operation {
+    CreateOperation create = 4;
+    UpdateOperation update = 5;
+    DeleteOperation delete = 6;
+  }
+  
+  // Sequence number from firehose
+  int64 seq = 7;
+  
+  // ISO 8601 timestamp
+  string time = 8;
+  
+  // Revision of the repo at this operation
+  string rev = 9;
+}
+
+// CreateOperation for new records
+message CreateOperation {
+  // The actual record data (CBOR encoded)
+  bytes record = 1;
+  
+  // CID of the record
+  string cid = 2;
+}
+
+// UpdateOperation for modified records
+message UpdateOperation {
+  // The updated record data (CBOR encoded)
+  bytes record = 1;
+  
+  // New CID of the record
+  string cid = 2;
+  
+  // Previous CID (for verification)
+  optional string prev_cid = 3;
+}
+
+// DeleteOperation for removed records
+message DeleteOperation {
+  // Previous CID of the deleted record
+  optional string prev_cid = 1;
+}
+
+// OperationResponse acknowledges processing of an operation
+message OperationResponse {
+  // Whether the operation was successfully processed
+  bool success = 1;
+  
+  // Error message if processing failed
+  string error = 2;
+  
+  // Sequence number to acknowledge
+  int64 seq = 3;
 }
 
 // CommitRequest represents a commit from the firehose or backfill
 // This matches the structure of com.atproto.sync.subscribeRepos#commit
+// (Keeping this for potential future use but not used in current service)
 message CommitRequest {
   // DID of the repository this commit belongs to
   string repo = 1;
