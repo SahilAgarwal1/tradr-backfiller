@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package ingester.v1;
+
+option go_package = "tradr-backfiller-relay/proto;proto";
+
+// IngesterService handles streaming commits from the backfiller relay
+// This mimics the AT Protocol firehose structure
+service IngesterService {
+  // StreamCommits creates a bidirectional stream for continuous commit processing
+  // The relay sends commits (which contain multiple operations), the ingester responds with acknowledgments
+  rpc StreamCommits(stream CommitRequest) returns (stream CommitResponse);
+  
+  // HealthCheck verifies the ingester is running and ready to accept commits
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// CommitRequest represents a commit from the firehose or backfill
+// This matches the structure of com.atproto.sync.subscribeRepos#commit
+message CommitRequest {
+  // DID of the repository this commit belongs to
+  string repo = 1;
+  
+  // Revision string from the commit
+  string rev = 2;
+  
+  // Previous revision (null for first commit)
+  optional string since = 3;
+  
+  // The operations in this commit
+  repeated RepoOp ops = 4;
+  
+  // CAR file blocks containing the actual record data
+  bytes blocks = 5;
+  
+  // Sequence number from firehose for ordering
+  int64 seq = 6;
+  
+  // ISO 8601 timestamp when this commit was created
+  string time = 7;
+  
+  // Indicates if this commit was too big to include ops (requires separate fetch)
+  bool too_big = 8;
+  
+  // Previous data CID for verification (optional)
+  optional string prev_data = 9;
+  
+  // Commit CID
+  string commit = 10;
+  
+  // Blob references in this commit
+  repeated string blobs = 11;
+}
+
+// RepoOp represents a single operation within a commit
+// This matches com.atproto.sync.subscribeRepos#repoOp
+message RepoOp {
+  // Action type: "create", "update", or "delete"
+  string action = 1;
+  
+  // Record path (e.g., "app.bsky.feed.post/3k2yihcrp6f2c")
+  string path = 2;
+  
+  // CID of the record (null for deletes)
+  optional string cid = 3;
+  
+  // Previous CID (for updates and deletes)
+  optional string prev = 4;
+}
+
+// CommitResponse contains the result of processing a commit
+message CommitResponse {
+  // Whether the commit was successfully processed
+  bool success = 1;
+  
+  // Error message if the commit failed
+  string error = 2;
+  
+  // Sequence number to acknowledge specific commit
+  int64 seq = 3;
+  
+  // Processing timestamp for metrics
+  string processed_at = 4;
+}
+
+// HealthCheckRequest for checking ingester status
+message HealthCheckRequest {}
+
+// HealthCheckResponse indicates the health status of the ingester
+message HealthCheckResponse {
+  // Whether the ingester is healthy and ready
+  bool healthy = 1;
+  
+  // Human-readable status message
+  string status = 2;
+  
+  // Current backlog size (if applicable)
+  int64 backlog = 3;
+}
+
+// Additional event types that might come through the firehose
+// These are less common but included for completeness
+
+// IdentityEvent represents a change to an account's identity
+message IdentityEvent {
+  string did = 1;
+  optional string handle = 2;
+  int64 seq = 3;
+  string time = 4;
+}
+
+// AccountEvent represents a change to account status
+message AccountEvent {
+  string did = 1;
+  bool active = 2;
+  optional string status = 3;
+  int64 seq = 4;
+  string time = 5;
+}
+
+// HandleEvent represents a handle change
+message HandleEvent {
+  string did = 1;
+  string handle = 2;
+  int64 seq = 3;
+  string time = 4;
+}
+
+// TombstoneEvent represents repo deletion
+message TombstoneEvent {
+  string did = 1;
+  int64 seq = 2;
+  string time = 3;
+}
+
+// MigrateEvent represents repo migration
+message MigrateEvent {
+  string did = 1;
+  string migrate_to = 2;
+  int64 seq = 3;
+  string time = 4;
+}
+
+// InfoEvent represents informational messages from the relay
+message InfoEvent {
+  string name = 1;
+  optional string message = 2;
+}
+
+// EventWrapper for different event types if we want to support all firehose events
+message FirehoseEvent {
+  oneof event {
+    CommitRequest commit = 1;
+    IdentityEvent identity = 2;
+    AccountEvent account = 3;
+    HandleEvent handle = 4;
+    TombstoneEvent tombstone = 5;
+    MigrateEvent migrate = 6;
+    InfoEvent info = 7;
+  }
+}
