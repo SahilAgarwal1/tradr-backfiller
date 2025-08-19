@@ -51,24 +51,32 @@ func main() {
 	// Initialize metrics
 	metricsCollector := metrics.New(cfg.Relay.Name)
 	
-	// Initialize gRPC connections to Ingesters
+	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	
-	streamManager, err := grpc.NewStreamManager(ctx, cfg.Ingesters, cfg.GRPC, metricsCollector)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize stream manager")
-	}
-	defer streamManager.Close()
+	// Create gRPC server to accept ingester connections
+	grpcServer := grpc.NewServer(cfg.GRPC, metricsCollector)
 	
-	// Create gRPC handler
-	grpcHandler := grpc.NewHandler(streamManager, metricsCollector)
+	// Create handler that uses the server to broadcast
+	grpcHandler := grpc.NewHandler(grpcServer, metricsCollector)
 	
 	// Create relay (equivalent to creating Indexer in search)
 	r, err := relay.NewRelay(db, grpcHandler, *cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize relay")
 	}
+	
+	// Start gRPC server in background
+	go func() {
+		port := cfg.GRPC.Port
+		if port == 0 {
+			port = 50051 // default gRPC port
+		}
+		if err := grpcServer.Start(ctx, port); err != nil {
+			log.Error().Err(err).Msg("gRPC server error")
+		}
+	}()
 	
 	// Start metrics server
 	go func() {
@@ -81,26 +89,29 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	
-	// Run relay in goroutine so we can handle shutdown
+	// Start relay in a goroutine
+	errChan := make(chan error, 1)
 	go func() {
 		log.Info().Msg("Starting relay")
-		if err := r.RunRelay(ctx); err != nil {
-			log.Error().Err(err).Msg("Relay error")
-			cancel()
-		}
+		errChan <- r.RunRelay(ctx)
 	}()
 	
-	// Wait for shutdown signal
+	// Wait for shutdown signal or error
 	select {
 	case sig := <-sigChan:
 		log.Info().Str("signal", sig.String()).Msg("Received shutdown signal")
-	case <-ctx.Done():
-		log.Info().Msg("Context cancelled")
+	case err := <-errChan:
+		if err != nil {
+			log.Error().Err(err).Msg("Relay error")
+		}
 	}
 	
 	// Graceful shutdown
+	log.Info().Msg("Shutting down...")
 	cancel()
-	time.Sleep(2 * time.Second) // Give time for cleanup
+	
+	// Give services time to clean up
+	time.Sleep(2 * time.Second)
 	
 	log.Info().Msg("Relay shutdown complete")
 }

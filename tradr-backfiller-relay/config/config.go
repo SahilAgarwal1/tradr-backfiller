@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -20,11 +19,8 @@ type Config struct {
 	// Backfiller configuration for processing repos and buffering
 	Backfiller BackfillerConfig `yaml:"backfiller"`
 	
-	// GRPC configuration for server and client connections
+	// GRPC configuration for server
 	GRPC GRPCConfig `yaml:"grpc"`
-	
-	// Ingesters is the list of Ingester service addresses to connect to
-	Ingesters []string `yaml:"ingesters"`
 	
 	// Database configuration for state storage
 	Database DatabaseConfig `yaml:"database"`
@@ -238,13 +234,8 @@ func overrideFromEnv(cfg *Config) {
 		cfg.Database.DSN = dsn
 	}
 
-	// Ingester addresses (comma-separated)
-	if ingesters := os.Getenv("INGESTER_ADDRESSES"); ingesters != "" {
-		cfg.Ingesters = strings.Split(ingesters, ",")
-	}
-
 	// GRPC configuration
-	if port := os.Getenv("GRPC_PORT"); port != "" {
+	if port := os.Getenv("GRPC_SERVER_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			cfg.GRPC.Port = p
 		}
@@ -275,10 +266,6 @@ func validate(cfg *Config) error {
 	// Check required fields
 	if cfg.Database.DSN == "" {
 		return fmt.Errorf("database DSN is required")
-	}
-
-	if len(cfg.Ingesters) == 0 {
-		return fmt.Errorf("at least one ingester address is required")
 	}
 
 	if cfg.Firehose.RelayHost == "" {

@@ -14,8 +14,8 @@ COPY test/mock-ingester/ test/mock-ingester/
 # Install protoc
 RUN apk add --no-cache protobuf protobuf-dev
 
-# Build the mock ingester
-RUN go build -o /mock-ingester ./test/mock-ingester/main.go
+# Build the mock ingester client
+RUN go build -o /mock-ingester ./test/mock-ingester/client.go
 
 # Run stage
 FROM alpine:latest

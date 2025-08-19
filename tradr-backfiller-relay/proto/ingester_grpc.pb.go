@@ -31,8 +31,8 @@ const (
 // This provides filtered, pre-processed operations rather than raw commits
 type IngesterServiceClient interface {
 	// StreamOperations creates a bidirectional stream for continuous operation processing
-	// The relay sends individual operations, the ingester responds with acknowledgments
-	StreamOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[OperationRequest, OperationResponse], error)
+	// The relay (server) sends operations, the ingester (client) responds with acknowledgments
+	StreamOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[OperationResponse, OperationRequest], error)
 	// HealthCheck verifies the ingester is running and ready to accept operations
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 }
@@ -45,18 +45,18 @@ func NewIngesterServiceClient(cc grpc.ClientConnInterface) IngesterServiceClient
 	return &ingesterServiceClient{cc}
 }
 
-func (c *ingesterServiceClient) StreamOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[OperationRequest, OperationResponse], error) {
+func (c *ingesterServiceClient) StreamOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[OperationResponse, OperationRequest], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &IngesterService_ServiceDesc.Streams[0], IngesterService_StreamOperations_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[OperationRequest, OperationResponse]{ClientStream: stream}
+	x := &grpc.GenericClientStream[OperationResponse, OperationRequest]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type IngesterService_StreamOperationsClient = grpc.BidiStreamingClient[OperationRequest, OperationResponse]
+type IngesterService_StreamOperationsClient = grpc.BidiStreamingClient[OperationResponse, OperationRequest]
 
 func (c *ingesterServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -76,8 +76,8 @@ func (c *ingesterServiceClient) HealthCheck(ctx context.Context, in *HealthCheck
 // This provides filtered, pre-processed operations rather than raw commits
 type IngesterServiceServer interface {
 	// StreamOperations creates a bidirectional stream for continuous operation processing
-	// The relay sends individual operations, the ingester responds with acknowledgments
-	StreamOperations(grpc.BidiStreamingServer[OperationRequest, OperationResponse]) error
+	// The relay (server) sends operations, the ingester (client) responds with acknowledgments
+	StreamOperations(grpc.BidiStreamingServer[OperationResponse, OperationRequest]) error
 	// HealthCheck verifies the ingester is running and ready to accept operations
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	mustEmbedUnimplementedIngesterServiceServer()
@@ -90,7 +90,7 @@ type IngesterServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedIngesterServiceServer struct{}
 
-func (UnimplementedIngesterServiceServer) StreamOperations(grpc.BidiStreamingServer[OperationRequest, OperationResponse]) error {
+func (UnimplementedIngesterServiceServer) StreamOperations(grpc.BidiStreamingServer[OperationResponse, OperationRequest]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamOperations not implemented")
 }
 func (UnimplementedIngesterServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
@@ -118,11 +118,11 @@ func RegisterIngesterServiceServer(s grpc.ServiceRegistrar, srv IngesterServiceS
 }
 
 func _IngesterService_StreamOperations_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(IngesterServiceServer).StreamOperations(&grpc.GenericServerStream[OperationRequest, OperationResponse]{ServerStream: stream})
+	return srv.(IngesterServiceServer).StreamOperations(&grpc.GenericServerStream[OperationResponse, OperationRequest]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type IngesterService_StreamOperationsServer = grpc.BidiStreamingServer[OperationRequest, OperationResponse]
+type IngesterService_StreamOperationsServer = grpc.BidiStreamingServer[OperationResponse, OperationRequest]
 
 func _IngesterService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HealthCheckRequest)

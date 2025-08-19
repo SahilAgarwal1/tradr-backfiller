@@ -12,26 +12,25 @@ import (
 	"tradr-backfiller-relay/metrics"
 )
 
-// Handler implements the relay.Handler interface and converts
-// backfiller operations into gRPC requests to send to Ingesters
+// Handler implements the relay.Handler interface and broadcasts
+// backfiller operations to all connected ingester clients
 type Handler struct {
-	// stream manages connections to multiple Ingester instances
-	stream *StreamManager
+	// server handles all client connections
+	server *Server
 	
 	// metrics tracks operation counts, latencies, and errors
 	metrics *metrics.Collector
 }
 
-// NewHandler creates a new gRPC handler
-func NewHandler(stream *StreamManager, metrics *metrics.Collector) *Handler {
+// NewHandler creates a new gRPC handler with server
+func NewHandler(server *Server, metrics *metrics.Collector) *Handler {
 	return &Handler{
-		stream:  stream,
+		server:  server,
 		metrics: metrics,
 	}
 }
 
-// HandleCreateRecord converts a create operation to a gRPC request and sends it
-// This is called by the backfiller when a new record is created
+// HandleCreateRecord broadcasts a create operation to all connected clients
 func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
@@ -49,25 +48,27 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 	if path == "" {
 		return fmt.Errorf("empty record path")
 	}
-	if rec == nil || len(*rec) == 0 {
-		return fmt.Errorf("empty record data")
-	}
-	if cid == nil {
-		return fmt.Errorf("nil CID")
+
+	// Parse collection from path (e.g., "app.bsky.feed.post/abc123" -> "app.bsky.feed.post")
+	collection := path
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		collection = path[:idx]
 	}
 
-	// Parse the path to extract collection and rkey
-	// Path format: "collection/rkey" e.g., "app.bsky.feed.post/3k2yihcrp6f2c"
-	collection, rkey := h.parsePath(path)
-
-	// Create the gRPC request
+	// Parse rkey from path (e.g., "app.bsky.feed.post/abc123" -> "abc123")
+	rkey := ""
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		rkey = path[idx+1:]
+	}
+	
+	// Build the gRPC request
 	req := &pb.OperationRequest{
+		Seq:        seq,
 		Repo:       repo,
 		Rev:        rev,
-		Collection: collection,
 		Rkey:       rkey,
-		Time:       time.Now().UTC().Format(time.RFC3339),
-		Seq:        seq,
+		Collection: collection,
+		Time:       time.Now().Format(time.RFC3339),
 		Operation: &pb.OperationRequest_Create{
 			Create: &pb.CreateOperation{
 				Record: *rec,
@@ -76,28 +77,22 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 		},
 	}
 
-	// Log the operation (debug level to avoid spam)
-	log.Debug().
-		Str("repo", repo).
-		Str("path", path).
-		Str("rev", rev).
-		Str("cid", cid.String()).
-		Int("record_size", len(*rec)).
-		Msg("Sending create operation")
-
-	// Send the request through the stream manager
-	// The stream manager handles load balancing and retries
-	err := h.stream.Send(ctx, req)
+	// Broadcast to all connected clients
+	err := h.server.Broadcast(req)
 	if err != nil {
 		h.metrics.IncrementErrorCount("create", err)
-		return fmt.Errorf("failed to send create operation: %w", err)
+		log.Debug().
+			Err(err).
+			Str("repo", repo).
+			Str("path", path).
+			Msg("Failed to broadcast create operation")
+		return fmt.Errorf("failed to broadcast create operation: %w", err)
 	}
 
 	return nil
 }
 
-// HandleUpdateRecord converts an update operation to a gRPC request and sends it
-// This is called by the backfiller when an existing record is updated
+// HandleUpdateRecord broadcasts an update operation to all connected clients
 func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
@@ -115,54 +110,51 @@ func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev strin
 	if path == "" {
 		return fmt.Errorf("empty record path")
 	}
-	if rec == nil || len(*rec) == 0 {
-		return fmt.Errorf("empty record data")
-	}
-	if cid == nil {
-		return fmt.Errorf("nil CID")
+
+	// Parse collection from path
+	collection := path
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		collection = path[:idx]
 	}
 
-	// Parse the path to extract collection and rkey
-	collection, rkey := h.parsePath(path)
+	// Parse rkey from path
+	rkey := ""
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		rkey = path[idx+1:]
+	}
 
-	// Create the gRPC request
+	// Build the gRPC request
 	req := &pb.OperationRequest{
+		Seq:        seq,
 		Repo:       repo,
 		Rev:        rev,
-		Collection: collection,
 		Rkey:       rkey,
-		Time:       time.Now().UTC().Format(time.RFC3339),
-		Seq:        seq,
+		Collection: collection,
+		Time:       time.Now().Format(time.RFC3339),
 		Operation: &pb.OperationRequest_Update{
 			Update: &pb.UpdateOperation{
 				Record: *rec,
 				Cid:    cid.String(),
-				// PrevCid could be added here if we track it
 			},
 		},
 	}
 
-	// Log the operation (debug level to avoid spam)
-	log.Debug().
-		Str("repo", repo).
-		Str("path", path).
-		Str("rev", rev).
-		Str("cid", cid.String()).
-		Int("record_size", len(*rec)).
-		Msg("Sending update operation")
-
-	// Send the request through the stream manager
-	err := h.stream.Send(ctx, req)
+	// Broadcast to all connected clients
+	err := h.server.Broadcast(req)
 	if err != nil {
 		h.metrics.IncrementErrorCount("update", err)
-		return fmt.Errorf("failed to send update operation: %w", err)
+		log.Debug().
+			Err(err).
+			Str("repo", repo).
+			Str("path", path).
+			Msg("Failed to broadcast update operation")
+		return fmt.Errorf("failed to broadcast update operation: %w", err)
 	}
 
 	return nil
 }
 
-// HandleDeleteRecord converts a delete operation to a gRPC request and sends it
-// This is called by the backfiller when a record is deleted
+// HandleDeleteRecord broadcasts a delete operation to all connected clients
 func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev string, path string, seq int64) error {
 	// Track timing for metrics
 	start := time.Now()
@@ -181,56 +173,42 @@ func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev strin
 		return fmt.Errorf("empty record path")
 	}
 
-	// Parse the path to extract collection and rkey
-	collection, rkey := h.parsePath(path)
+	// Parse collection from path
+	collection := path
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		collection = path[:idx]
+	}
 
-	// Create the gRPC request
+	// Parse rkey from path
+	rkey := ""
+	if idx := strings.IndexByte(path, '/'); idx > 0 {
+		rkey = path[idx+1:]
+	}
+
+	// Build the gRPC request
 	req := &pb.OperationRequest{
+		Seq:        seq,
 		Repo:       repo,
 		Rev:        rev,
-		Collection: collection,
 		Rkey:       rkey,
-		Time:       time.Now().UTC().Format(time.RFC3339),
-		Seq:        seq,
+		Collection: collection,
+		Time:       time.Now().Format(time.RFC3339),
 		Operation: &pb.OperationRequest_Delete{
-			Delete: &pb.DeleteOperation{
-				// PrevCid could be added here if we track it
-			},
+			Delete: &pb.DeleteOperation{},
 		},
 	}
 
-	// Log the operation (debug level to avoid spam)
-	log.Debug().
-		Str("repo", repo).
-		Str("path", path).
-		Str("rev", rev).
-		Msg("Sending delete operation")
-
-	// Send the request through the stream manager
-	err := h.stream.Send(ctx, req)
+	// Broadcast to all connected clients
+	err := h.server.Broadcast(req)
 	if err != nil {
 		h.metrics.IncrementErrorCount("delete", err)
-		return fmt.Errorf("failed to send delete operation: %w", err)
+		log.Debug().
+			Err(err).
+			Str("repo", repo).
+			Str("path", path).
+			Msg("Failed to broadcast delete operation")
+		return fmt.Errorf("failed to broadcast delete operation: %w", err)
 	}
 
 	return nil
-}
-
-// parsePath splits a record path into collection and rkey
-// Path format: "collection/rkey" e.g., "app.bsky.feed.post/3k2yihcrp6f2c"
-func (h *Handler) parsePath(path string) (collection string, rkey string) {
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) == 2 {
-		return parts[0], parts[1]
-	}
-	// If no slash found, treat the whole path as collection
-	return path, ""
-}
-
-// GetStats returns statistics about the handler's operation
-func (h *Handler) GetStats() map[string]interface{} {
-	return map[string]interface{}{
-		"stream_stats":  h.stream.GetStats(),
-		"metrics_stats": h.metrics.GetStats(),
-	}
 }

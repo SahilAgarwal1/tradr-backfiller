@@ -1462,8 +1462,8 @@ const file_proto_ingester_proto_rawDesc = "" +
 	"\x04info\x18\a \x01(\v2\x16.ingester.v1.InfoEventH\x00R\x04infoB\a\n" +
 	"\x05event2\xba\x01\n" +
 	"\x0fIngesterService\x12U\n" +
-	"\x10StreamOperations\x12\x1d.ingester.v1.OperationRequest\x1a\x1e.ingester.v1.OperationResponse(\x010\x01\x12P\n" +
-	"\vHealthCheck\x12\x1f.ingester.v1.HealthCheckRequest\x1a .ingester.v1.HealthCheckResponseB$Z\"tradr-backfiller-relay/proto;protob\x06proto3"
+	"\x10StreamOperations\x12\x1e.ingester.v1.OperationResponse\x1a\x1d.ingester.v1.OperationRequest(\x010\x01\x12P\n" +
+	"\vHealthCheck\x12\x1f.ingester.v1.HealthCheckRequest\x1a .ingester.v1.HealthCheckResponseB\tZ\a./protob\x06proto3"
 
 var (
 	file_proto_ingester_proto_rawDescOnce sync.Once
@@ -1509,9 +1509,9 @@ var file_proto_ingester_proto_depIdxs = []int32{
 	13, // 8: ingester.v1.FirehoseEvent.tombstone:type_name -> ingester.v1.TombstoneEvent
 	14, // 9: ingester.v1.FirehoseEvent.migrate:type_name -> ingester.v1.MigrateEvent
 	15, // 10: ingester.v1.FirehoseEvent.info:type_name -> ingester.v1.InfoEvent
-	0,  // 11: ingester.v1.IngesterService.StreamOperations:input_type -> ingester.v1.OperationRequest
+	4,  // 11: ingester.v1.IngesterService.StreamOperations:input_type -> ingester.v1.OperationResponse
 	8,  // 12: ingester.v1.IngesterService.HealthCheck:input_type -> ingester.v1.HealthCheckRequest
-	4,  // 13: ingester.v1.IngesterService.StreamOperations:output_type -> ingester.v1.OperationResponse
+	0,  // 13: ingester.v1.IngesterService.StreamOperations:output_type -> ingester.v1.OperationRequest
 	9,  // 14: ingester.v1.IngesterService.HealthCheck:output_type -> ingester.v1.HealthCheckResponse
 	13, // [13:15] is the sub-list for method output_type
 	11, // [11:13] is the sub-list for method input_type

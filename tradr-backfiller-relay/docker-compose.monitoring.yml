@@ -38,15 +38,16 @@ services:
       postgres:
         condition: service_healthy
 
-  # Mock Ingester to receive gRPC messages
+  # Mock Ingester client that connects to relay
   mock-ingester:
     build:
       context: .
       dockerfile: test/mock-ingester/Dockerfile
     container_name: relay-monitor-ingester
-    command: ["-stats", "5", "-port", "50052"]
-    ports:
-      - "50053:50052"
+    command: ["-relay", "relay-monitor:50051", "-stats", "5", "-ack", "100"]
+    depends_on:
+      relay:
+        condition: service_started
     networks:
       - relay-network
 
@@ -59,23 +60,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      mock-ingester:
-        condition: service_started
     environment:
       DATABASE_DSN: "postgres://relay:relay@relay-monitor-postgres:5432/backfiller_relay?sslmode=disable"
       DATABASE_MAX_OPEN_CONNS: "25"
       DATABASE_MAX_IDLE_CONNS: "25"
       FIREHOSE_HOST: "wss://bsky.network"
       NSID_FILTER: "app.bsky.feed.post,app.bsky.graph.follow,app.bsky.actor.profile"
-      INGESTER_ADDRESSES: "relay-monitor-ingester:50052"
+      GRPC_SERVER_PORT: "50051"
       RELAY_NAME: "relay-monitor"
-      LOG_LEVEL: "info"
+      LOG_LEVEL: "debug"
       PARALLEL_BACKFILLS: "5"
       PARALLEL_RECORD_CREATES: "50"
       GRPC_MAX_MESSAGE_SIZE: "10485760"
       METRICS_PORT: "9090"
     ports:
       - "9090:9090"
+      - "50051:50051"
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
     networks:

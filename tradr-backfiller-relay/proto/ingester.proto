@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package ingester.v1;
 
-option go_package = "tradr-backfiller-relay/proto;proto";
+option go_package = "./proto";
 
 // IngesterService handles streaming operations from the backfiller relay
 // This provides filtered, pre-processed operations rather than raw commits
 service IngesterService {
   // StreamOperations creates a bidirectional stream for continuous operation processing
-  // The relay sends individual operations, the ingester responds with acknowledgments
-  rpc StreamOperations(stream OperationRequest) returns (stream OperationResponse);
+  // The relay (server) sends operations, the ingester (client) responds with acknowledgments
+  rpc StreamOperations(stream OperationResponse) returns (stream OperationRequest);
   
   // HealthCheck verifies the ingester is running and ready to accept operations
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
