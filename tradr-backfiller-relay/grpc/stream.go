@@ -109,6 +109,10 @@ func NewStreamManager(ctx context.Context, addresses []string, cfg config.GRPCCo
 	go sm.healthCheckLoop()
 	go sm.reconnectLoop()
 
+	// Update metrics for total ingesters
+	sm.metrics.SetTotalIngesters(len(addresses))
+	sm.metrics.SetHealthyIngesters(sm.countHealthy())
+
 	log.Info().
 		Int("total", len(addresses)).
 		Int("healthy", sm.countHealthy()).
@@ -179,6 +183,9 @@ func (sm *StreamManager) connect(index int, address string) error {
 	sm.streams[index] = stream
 	sm.healthy[index] = true
 	sm.mu.Unlock()
+
+	// Update metrics for this connection
+	sm.metrics.UpdateConnectionState(address, index, 1) // 1 = connected
 
 	// Start goroutine to handle responses from this stream
 	go sm.handleResponses(index, stream)
@@ -271,6 +278,9 @@ func (sm *StreamManager) handleResponses(index int, stream pb.IngesterService_St
 			sm.healthy[index] = false
 			sm.mu.Unlock()
 			
+			// Update metrics for disconnected state
+			sm.metrics.UpdateConnectionState(sm.addresses[index], index, 0) // 0 = disconnected
+			
 			select {
 			case sm.reconnectChan <- index:
 			default:
@@ -317,6 +327,7 @@ func (sm *StreamManager) checkHealth() {
 	copy(connections, sm.connections)
 	sm.mu.RUnlock()
 
+	healthyCount := 0
 	for i, conn := range connections {
 		if conn == nil {
 			continue
@@ -331,6 +342,10 @@ func (sm *StreamManager) checkHealth() {
 		sm.healthy[i] = healthy
 		sm.mu.Unlock()
 
+		if healthy {
+			healthyCount++
+		}
+
 		// Log state changes
 		if oldHealth != healthy {
 			log.Info().
@@ -339,6 +354,13 @@ func (sm *StreamManager) checkHealth() {
 				Bool("healthy", healthy).
 				Str("state", state.String()).
 				Msg("Connection health changed")
+
+			// Update metrics
+			if healthy {
+				sm.metrics.UpdateConnectionState(sm.addresses[i], i, 1) // 1 = connected
+			} else {
+				sm.metrics.UpdateConnectionState(sm.addresses[i], i, 0) // 0 = disconnected
+			}
 
 			// Trigger reconnection if became unhealthy
 			if !healthy {
@@ -349,6 +371,9 @@ func (sm *StreamManager) checkHealth() {
 			}
 		}
 	}
+	
+	// Update healthy ingesters count
+	sm.metrics.SetHealthyIngesters(healthyCount)
 }
 
 // reconnectLoop handles reconnection attempts for failed connections

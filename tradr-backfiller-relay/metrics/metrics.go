@@ -10,7 +10,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/rs/zerolog/log"
 	"tradr-backfiller-relay/config"
 )
@@ -20,16 +19,21 @@ type Collector struct {
 	// Counters for operations
 	operationsTotal   *prometheus.CounterVec   // Total operations by type
 	operationsSent    prometheus.Counter       // Successfully sent to Ingester
-	operationsBuffered prometheus.Counter      // Buffered due to connection issues
-	operationsDropped prometheus.Counter       // Dropped due to buffer overflow
 	operationsAcked   prometheus.Counter       // Acknowledged by Ingester
 	
 	// Histograms for latencies
 	operationLatency *prometheus.HistogramVec  // Latency by operation type
 	
 	// Gauges for current state
-	bufferedCount    prometheus.Gauge          // Current buffered operations
-	healthyIngesters prometheus.Gauge          // Number of healthy Ingester connections
+	healthyIngesters    prometheus.Gauge       // Number of healthy Ingester connections
+	totalIngesters      prometheus.Gauge       // Total number of configured Ingesters
+	grpcConnectionState *prometheus.GaugeVec   // State of each gRPC connection (0=down, 1=up)
+	
+	// Backfill metrics
+	backfillJobsActive  prometheus.Gauge         // Number of active backfill jobs
+	backfillJobsPending prometheus.Gauge         // Number of pending backfill jobs
+	backfillJobsFailed  prometheus.Gauge         // Number of failed backfill jobs
+	backfillRepoSize    *prometheus.GaugeVec     // Size of repos being backfilled
 	
 	// Error tracking
 	errorsTotal     *prometheus.CounterVec     // Errors by type and operation
@@ -67,20 +71,6 @@ func New(serviceName string) *Collector {
 			},
 		),
 		
-		operationsBuffered: prometheus.NewCounter(
-			prometheus.CounterOpts{
-				Name: "relay_operations_buffered_total",
-				Help: "Total number of operations buffered",
-			},
-		),
-		
-		operationsDropped: prometheus.NewCounter(
-			prometheus.CounterOpts{
-				Name: "relay_operations_dropped_total",
-				Help: "Total number of operations dropped due to buffer overflow",
-			},
-		),
-		
 		operationsAcked: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "relay_operations_acknowledged_total",
@@ -98,19 +88,57 @@ func New(serviceName string) *Collector {
 			[]string{"operation", "service"},
 		),
 		
-		// Define gauges
-		bufferedCount: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "relay_buffered_operations",
-				Help: "Current number of buffered operations",
-			},
-		),
-		
+		// Define gauges for gRPC connections
 		healthyIngesters: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "relay_healthy_ingesters",
 				Help: "Number of healthy Ingester connections",
 			},
+		),
+		
+		totalIngesters: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "relay_total_ingesters",
+				Help: "Total number of configured Ingester connections",
+			},
+		),
+		
+		grpcConnectionState: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "relay_grpc_connection_state",
+				Help: "State of each gRPC connection (0=disconnected, 1=connected, 2=connecting)",
+			},
+			[]string{"address", "index"},
+		),
+		
+		// Define backfill metrics
+		backfillJobsActive: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "relay_backfill_jobs_active",
+				Help: "Number of backfill jobs currently being processed",
+			},
+		),
+		
+		backfillJobsPending: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "relay_backfill_jobs_pending",
+				Help: "Number of backfill jobs waiting to be processed",
+			},
+		),
+		
+		backfillJobsFailed: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "relay_backfill_jobs_failed",
+				Help: "Number of backfill jobs that have failed",
+			},
+		),
+		
+		backfillRepoSize: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "relay_backfill_repo_size",
+				Help: "Size of repositories being backfilled (in bytes)",
+			},
+			[]string{"repo"},
 		),
 		
 		// Define error counter
@@ -127,12 +155,15 @@ func New(serviceName string) *Collector {
 	prometheus.MustRegister(
 		c.operationsTotal,
 		c.operationsSent,
-		c.operationsBuffered,
-		c.operationsDropped,
 		c.operationsAcked,
 		c.operationLatency,
-		c.bufferedCount,
 		c.healthyIngesters,
+		c.totalIngesters,
+		c.grpcConnectionState,
+		c.backfillJobsActive,
+		c.backfillJobsPending,
+		c.backfillJobsFailed,
+		c.backfillRepoSize,
 		c.errorsTotal,
 	)
 	
@@ -158,22 +189,6 @@ func (c *Collector) IncrementSentCount() {
 	atomic.AddUint64(&c.sentCount, 1)
 }
 
-// IncrementBufferedCount increments the buffered counter
-func (c *Collector) IncrementBufferedCount() {
-	c.operationsBuffered.Inc()
-	c.bufferedCount.Inc()
-}
-
-// DecrementBufferedCount decrements the buffered counter
-func (c *Collector) DecrementBufferedCount() {
-	c.bufferedCount.Dec()
-}
-
-// IncrementDroppedCount increments the dropped counter
-func (c *Collector) IncrementDroppedCount() {
-	c.operationsDropped.Inc()
-}
-
 // IncrementAcknowledgedCount increments the acknowledged counter
 func (c *Collector) IncrementAcknowledgedCount() {
 	c.operationsAcked.Inc()
@@ -189,8 +204,6 @@ func (c *Collector) IncrementErrorCount(operation string, err error) {
 			errorType = "connection"
 		case isTimeoutError(err):
 			errorType = "timeout"
-		case isBufferError(err):
-			errorType = "buffer"
 		default:
 			errorType = "processing"
 		}
@@ -204,6 +217,42 @@ func (c *Collector) IncrementErrorCount(operation string, err error) {
 func (c *Collector) SetHealthyIngesters(count int) {
 	c.healthyIngesters.Set(float64(count))
 }
+
+// SetTotalIngesters sets the total number of configured Ingester connections
+func (c *Collector) SetTotalIngesters(count int) {
+	c.totalIngesters.Set(float64(count))
+}
+
+// UpdateConnectionState updates the state of a specific gRPC connection
+// state: 0=disconnected, 1=connected, 2=connecting
+func (c *Collector) UpdateConnectionState(address string, index int, state float64) {
+	c.grpcConnectionState.WithLabelValues(address, fmt.Sprintf("%d", index)).Set(state)
+}
+
+// SetBackfillJobsActive sets the number of active backfill jobs
+func (c *Collector) SetBackfillJobsActive(count int) {
+	c.backfillJobsActive.Set(float64(count))
+}
+
+// SetBackfillJobsPending sets the number of pending backfill jobs
+func (c *Collector) SetBackfillJobsPending(count int) {
+	c.backfillJobsPending.Set(float64(count))
+}
+
+// SetBackfillJobsFailed sets the number of failed backfill jobs
+func (c *Collector) SetBackfillJobsFailed(count int) {
+	c.backfillJobsFailed.Set(float64(count))
+}
+
+// SetBackfillRepoSize sets the size of a repo being backfilled
+func (c *Collector) SetBackfillRepoSize(repo string, size float64) {
+	c.backfillRepoSize.WithLabelValues(repo).Set(size)
+}
+
+// Removed buffer-related methods:
+// - IncrementBufferedCount
+// - DecrementBufferedCount  
+// - IncrementDroppedCount
 
 // calculateRates periodically calculates error rates and other derived metrics
 func (c *Collector) calculateRates() {
@@ -239,18 +288,8 @@ func (c *Collector) GetStats() map[string]interface{} {
 	errorRate := c.errorRate
 	c.mu.RUnlock()
 	
-	// Get current gauge values using dto.Metric
-	bufferedMetric := &dto.Metric{}
-	c.bufferedCount.Write(bufferedMetric)
-	
-	healthyMetric := &dto.Metric{}
-	c.healthyIngesters.Write(healthyMetric)
-	
 	return map[string]interface{}{
-		"error_rate":           errorRate,
-		"buffered_operations":  int64(bufferedMetric.GetGauge().GetValue()),
-		"healthy_ingesters":    int64(healthyMetric.GetGauge().GetValue()),
-		"buffer_usage":        0.0, // This would be calculated based on buffer capacity
+		"error_rate": errorRate,
 	}
 }
 
@@ -314,11 +353,6 @@ func isTimeoutError(err error) bool {
 	return err != nil && contains(err.Error(), []string{"timeout", "deadline"})
 }
 
-func isBufferError(err error) bool {
-	// Check if error is related to buffering
-	return err != nil && contains(err.Error(), []string{"buffer", "overflow", "full"})
-}
-
 func contains(s string, substrs []string) bool {
 	for _, substr := range substrs {
 		if len(s) >= len(substr) && s[:len(substr)] == substr {
@@ -326,30 +360,4 @@ func contains(s string, substrs []string) bool {
 		}
 	}
 	return false
-}
-
-// prometheusMetricDTO is a helper struct for reading Prometheus metric values
-type prometheusMetricDTO struct {
-	gauge *prometheusGaugeDTO
-}
-
-func (m *prometheusMetricDTO) GetGauge() *prometheusGaugeDTO {
-	if m.gauge == nil {
-		m.gauge = &prometheusGaugeDTO{}
-	}
-	return m.gauge
-}
-
-func (m *prometheusMetricDTO) Write(pb *prometheusMetricDTO) error {
-	// This is a simplified implementation
-	// Real implementation would properly serialize the metric
-	return nil
-}
-
-type prometheusGaugeDTO struct {
-	value float64
-}
-
-func (g *prometheusGaugeDTO) GetValue() float64 {
-	return g.value
 }

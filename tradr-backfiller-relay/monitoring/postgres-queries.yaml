@@ -69,3 +69,95 @@ backfill_oldest_queued:
     - oldest_queued_age_seconds:
         usage: "GAUGE"
         description: "Age of the oldest queued job in seconds"
+
+backfill_active_jobs:
+  query: |
+    SELECT 
+      repo,
+      state,
+      retry_count,
+      EXTRACT(EPOCH FROM (NOW() - updated_at)) as processing_time_seconds
+    FROM gorm_db_jobs
+    WHERE state = 'in_progress'
+    LIMIT 20
+  metrics:
+    - repo:
+        usage: "LABEL"
+        description: "Repository DID"
+    - state:
+        usage: "LABEL"
+        description: "Job state"
+    - retry_count:
+        usage: "GAUGE"
+        description: "Number of retries for this job"
+    - processing_time_seconds:
+        usage: "GAUGE"
+        description: "Time spent processing this job in seconds"
+
+backfill_failed_jobs:
+  query: |
+    SELECT 
+      repo,
+      state,
+      retry_count,
+      EXTRACT(EPOCH FROM (NOW() - updated_at)) as time_since_failure_seconds
+    FROM gorm_db_jobs
+    WHERE state LIKE 'failed%'
+    ORDER BY updated_at DESC
+    LIMIT 20
+  metrics:
+    - repo:
+        usage: "LABEL"
+        description: "Repository DID"
+    - state:
+        usage: "LABEL"
+        description: "Failure state/reason"
+    - retry_count:
+        usage: "GAUGE"
+        description: "Number of retries for this job"
+    - time_since_failure_seconds:
+        usage: "GAUGE"
+        description: "Time since job failed in seconds"
+
+backfill_retry_queue:
+  query: |
+    SELECT 
+      COUNT(*) as retry_pending,
+      AVG(retry_count) as avg_retry_count,
+      MAX(retry_count) as max_retry_count
+    FROM gorm_db_jobs
+    WHERE state LIKE 'failed%'
+      AND (retry_after IS NULL OR retry_after < NOW())
+  metrics:
+    - retry_pending:
+        usage: "GAUGE"
+        description: "Number of jobs pending retry"
+    - avg_retry_count:
+        usage: "GAUGE"
+        description: "Average retry count for pending jobs"
+    - max_retry_count:
+        usage: "GAUGE"
+        description: "Maximum retry count for pending jobs"
+
+backfill_throughput:
+  query: |
+    WITH intervals AS (
+      SELECT 
+        DATE_TRUNC('minute', updated_at) as minute,
+        COUNT(*) as completed_per_minute
+      FROM gorm_db_jobs
+      WHERE state = 'complete'
+        AND updated_at > NOW() - INTERVAL '10 minutes'
+      GROUP BY minute
+    )
+    SELECT 
+      COALESCE(AVG(completed_per_minute), 0) as avg_throughput,
+      COALESCE(MAX(completed_per_minute), 0) as max_throughput
+    FROM intervals
+  metrics:
+    - avg_throughput:
+        usage: "GAUGE"
+        description: "Average backfill throughput (jobs/minute)"
+    - max_throughput:
+        usage: "GAUGE"
+        description: "Maximum backfill throughput (jobs/minute)"

@@ -27,94 +27,14 @@
             "mode": "absolute",
             "steps": [
               {"color": "green", "value": null},
-              {"color": "yellow", "value": 1},
-              {"color": "red", "value": 2}
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
-      "id": 1,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "text": {},
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "relay_healthy_ingesters",
-          "refId": "A"
-        }
-      ],
-      "title": "Healthy Ingesters",
-      "type": "stat"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null}
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
-      "id": 2,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "text": {},
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "relay_total_ingesters",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Ingesters",
-      "type": "stat"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
               {"color": "red", "value": 10000}
             ]
           },
           "unit": "short"
         }
       },
-      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
-      "id": 3,
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "id": 1,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
@@ -154,8 +74,8 @@
           "unit": "short"
         }
       },
-      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
-      "id": 4,
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "id": 2,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -193,8 +113,8 @@
           "unit": "ops"
         }
       },
-      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
-      "id": 5,
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -232,8 +152,8 @@
           "unit": "short"
         }
       },
-      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
-      "id": 6,
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "id": 4,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -261,65 +181,6 @@
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
-          "custom": {
-            "align": "auto",
-            "displayMode": "auto"
-          },
-          "mappings": [
-            {"options": {"0": {"text": "Disconnected"}}, "type": "value"},
-            {"options": {"1": {"text": "Connected"}}, "type": "value"},
-            {"options": {"2": {"text": "Connecting"}}, "type": "value"}
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 0.5},
-              {"color": "green", "value": 1}
-            ]
-          }
-        }
-      },
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 4},
-      "id": 7,
-      "options": {
-        "showHeader": true
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "relay_grpc_connection_state",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "gRPC Connection Status",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true
-            },
-            "renameByName": {
-              "address": "Address",
-              "index": "Index",
-              "Value": "Status"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {
             "axisLabel": "",
@@ -338,9 +199,7 @@
             "pointSize": 5,
             "scaleDistribution": {"type": "linear"},
             "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
+            "spanNulls": true
           },
           "mappings": [],
           "thresholds": {
@@ -352,8 +211,8 @@
           "unit": "ops"
         }
       },
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 4},
-      "id": 8,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [],
@@ -395,9 +254,7 @@
             "pointSize": 5,
             "scaleDistribution": {"type": "linear"},
             "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
+            "spanNulls": true
           },
           "mappings": [],
           "thresholds": {
@@ -409,8 +266,8 @@
           "unit": "short"
         }
       },
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 10},
-      "id": 9,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 6,
       "options": {
         "legend": {
           "calcs": [],
@@ -452,9 +309,7 @@
             "pointSize": 5,
             "scaleDistribution": {"type": "linear"},
             "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
+            "spanNulls": true
           },
           "mappings": [],
           "thresholds": {
@@ -463,15 +318,15 @@
               {"color": "green", "value": null}
             ]
           },
-          "unit": "ops"
+          "unit": "repos/h"
         }
       },
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 10},
-      "id": 10,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "id": 7,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["mean", "lastNotNull"],
+          "displayMode": "table",
           "placement": "bottom"
         },
         "tooltip": {"mode": "single"}
@@ -479,23 +334,86 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "backfill_throughput_avg_throughput",
-          "legendFormat": "Average",
+          "expr": "backfill_processing_rate_completed_last_hour",
+          "legendFormat": "Completed last hour",
           "refId": "A"
         },
         {
-          "expr": "backfill_throughput_max_throughput",
-          "legendFormat": "Max",
+          "expr": "rate(backfill_jobs_count{state=\"complete\"}[5m]) * 3600",
+          "legendFormat": "Current rate/hour",
           "refId": "B"
         }
       ],
-      "title": "Backfill Throughput (jobs/min)",
+      "title": "Backfill Throughput",
       "type": "timeseries"
     },
     {
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 5000}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "backfill_ops_buffered",
+          "legendFormat": "Buffered Operations",
+          "refId": "A"
+        },
+        {
+          "expr": "relay_operations_buffered_total - relay_operations_sent_total",
+          "legendFormat": "Pending Send",
+          "refId": "B"
+        }
+      ],
+      "title": "Buffer Status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
           "custom": {
             "align": "auto",
             "displayMode": "auto"
@@ -510,40 +428,36 @@
           "unit": "s"
         }
       },
-      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
-      "id": 11,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "id": 9,
       "options": {
         "showHeader": true
       },
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "backfill_active_jobs_processing_time_seconds",
+          "expr": "histogram_quantile(0.5, rate(relay_operation_duration_seconds_bucket[5m]))",
           "format": "table",
           "instant": true,
+          "legendFormat": "p50",
           "refId": "A"
-        }
-      ],
-      "title": "Active Backfill Jobs",
-      "transformations": [
+        },
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true
-            },
-            "renameByName": {
-              "repo": "Repository",
-              "state": "State",
-              "retry_count": "Retries",
-              "Value": "Processing Time (s)"
-            }
-          }
+          "expr": "histogram_quantile(0.95, rate(relay_operation_duration_seconds_bucket[5m]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(relay_operation_duration_seconds_bucket[5m]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "p99",
+          "refId": "C"
         }
       ],
+      "title": "Operation Latency Percentiles",
       "type": "table"
     },
     {
@@ -568,68 +482,7 @@
             "pointSize": 5,
             "scaleDistribution": {"type": "linear"},
             "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 0.1},
-              {"color": "red", "value": 0.5}
-            ]
-          },
-          "unit": "percentunit"
-        }
-      },
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 22},
-      "id": 12,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {"mode": "single"}
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "rate(relay_errors_total[5m]) / (rate(relay_operations_sent_total[5m]) + 0.0001)",
-          "legendFormat": "Error Rate",
-          "refId": "A"
-        }
-      ],
-      "title": "Error Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
+            "spanNulls": true
           },
           "mappings": [],
           "thresholds": {
@@ -638,14 +491,14 @@
               {"color": "green", "value": null}
             ]
           },
-          "unit": "s"
+          "unit": "errors/m"
         }
       },
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 22},
-      "id": 13,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "id": 10,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -654,26 +507,16 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, rate(relay_operation_duration_seconds_bucket[5m]))",
-          "legendFormat": "p50",
+          "expr": "rate(relay_errors_total[1m]) * 60",
+          "legendFormat": "{{operation}} - {{type}}",
           "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, rate(relay_operation_duration_seconds_bucket[5m]))",
-          "legendFormat": "p95",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, rate(relay_operation_duration_seconds_bucket[5m]))",
-          "legendFormat": "p99",
-          "refId": "C"
         }
       ],
-      "title": "Operation Latency",
+      "title": "Error Rate",
       "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 27,
   "style": "dark",
   "tags": ["relay", "backfiller"],
@@ -681,12 +524,12 @@
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Relay Backfiller Dashboard",
-  "uid": "relay-backfiller",
+  "title": "Relay & Backfiller Dashboard",
+  "uid": "relay-monitor",
   "version": 1
 }
