@@ -18,7 +18,7 @@ import (
 )
 
 // StreamManager manages gRPC connections and streams to multiple Ingester instances
-// It handles load balancing, reconnection, and buffering during disconnections
+// It handles load balancing and reconnection (NO BUFFERING - relies on firehose replay)
 type StreamManager struct {
 	// addresses is the list of Ingester service addresses
 	addresses []string
@@ -50,9 +50,6 @@ type StreamManager struct {
 	// metrics for tracking operations
 	metrics *metrics.Collector
 	
-	// buffer holds operations during disconnection
-	buffer chan *pb.OperationRequest
-	
 	// healthy tracks which connections are healthy
 	healthy []bool
 	
@@ -68,7 +65,7 @@ func NewStreamManager(ctx context.Context, addresses []string, cfg config.GRPCCo
 
 	// Create a cancellable context
 	ctx, cancel := context.WithCancel(ctx)
-
+	
 	sm := &StreamManager{
 		addresses:     addresses,
 		clients:       make([]pb.IngesterServiceClient, len(addresses)),
@@ -79,7 +76,6 @@ func NewStreamManager(ctx context.Context, addresses []string, cfg config.GRPCCo
 		cancel:       cancel,
 		config:       cfg,
 		metrics:      metrics,
-		buffer:       make(chan *pb.OperationRequest, cfg.MaxMessageSize/1024), // Buffer size based on message size
 		reconnectChan: make(chan int, len(addresses)),
 	}
 
@@ -112,7 +108,6 @@ func NewStreamManager(ctx context.Context, addresses []string, cfg config.GRPCCo
 	// Start background goroutines for health checking and reconnection
 	go sm.healthCheckLoop()
 	go sm.reconnectLoop()
-	go sm.bufferProcessor()
 
 	log.Info().
 		Int("total", len(addresses)).
@@ -197,24 +192,11 @@ func (sm *StreamManager) connect(index int, address string) error {
 }
 
 // Send sends an operation request to one of the connected Ingesters
-// It uses round-robin load balancing to distribute requests
+// NO BUFFERING - just fail if can't send, let firehose handle replay
 func (sm *StreamManager) Send(ctx context.Context, req *pb.OperationRequest) error {
-	// Try to send directly first
-	if err := sm.sendDirect(ctx, req); err != nil {
-		// If direct send fails, buffer the request
-		select {
-		case sm.buffer <- req:
-			log.Debug().Msg("Operation buffered due to connection issues")
-			sm.metrics.IncrementBufferedCount()
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			return fmt.Errorf("buffer full, dropping operation")
-		}
-	}
-	
-	return nil
+	// Try to send directly - if it fails, return the error
+	// The firehose will handle retries via cursor replay
+	return sm.sendDirect(ctx, req)
 }
 
 // sendDirect attempts to send a request directly to a healthy stream
@@ -416,35 +398,6 @@ func (sm *StreamManager) reconnectLoop() {
 	}
 }
 
-// bufferProcessor processes buffered operations when connections are restored
-func (sm *StreamManager) bufferProcessor() {
-	for {
-		select {
-		case <-sm.ctx.Done():
-			return
-		
-		case req := <-sm.buffer:
-			// Keep trying to send buffered request
-			for {
-				if err := sm.sendDirect(sm.ctx, req); err != nil {
-					// Wait a bit before retrying
-					time.Sleep(100 * time.Millisecond)
-					
-					// Check if we should give up
-					select {
-					case <-sm.ctx.Done():
-						return
-					default:
-						continue
-					}
-				} else {
-					sm.metrics.DecrementBufferedCount()
-					break
-				}
-			}
-		}
-	}
-}
 
 // countHealthy returns the number of healthy connections
 func (sm *StreamManager) countHealthy() int {
@@ -472,8 +425,6 @@ func (sm *StreamManager) GetStats() map[string]interface{} {
 	stats := map[string]interface{}{
 		"total_connections": len(sm.connections),
 		"healthy_connections": sm.countHealthyLocked(),
-		"buffer_size": len(sm.buffer),
-		"buffer_capacity": cap(sm.buffer),
 	}
 
 	// Add per-connection stats
@@ -514,9 +465,6 @@ func (sm *StreamManager) Close() error {
 			}
 		}
 	}
-	
-	// Close buffer channel
-	close(sm.buffer)
 	
 	return nil
 }

@@ -31,10 +31,29 @@ type MockIngester struct {
 	delayMs     int     // Artificial delay in milliseconds
 }
 
-// StreamOperations handles the bidirectional stream
+// StreamOperations handles the bidirectional stream - ULTRA MINIMAL FOR MAX THROUGHPUT
 func (m *MockIngester) StreamOperations(stream pb.IngesterService_StreamOperationsServer) error {
 	log.Println("📡 New stream connection established")
 	
+	// Start a goroutine to send periodic ACKs to keep connection alive
+	// But don't ACK every message - just periodically to prevent timeout
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			// Send a heartbeat response
+			resp := &pb.OperationResponse{
+				Success: true,
+				Seq:     0, // Special seq for heartbeat
+			}
+			if err := stream.Send(resp); err != nil {
+				return
+			}
+		}
+	}()
+	
+	// Just receive and count - no responses per operation
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -46,67 +65,17 @@ func (m *MockIngester) StreamOperations(stream pb.IngesterService_StreamOperatio
 			return err
 		}
 		
-		// Add artificial delay if configured
-		if m.delayMs > 0 {
-			time.Sleep(time.Duration(m.delayMs) * time.Millisecond)
-		}
-		
-		// Process the operation
-		var opType string
-		var recordSize int
-		
-		switch op := req.Operation.(type) {
+		// Only count for statistics
+		switch req.Operation.(type) {
 		case *pb.OperationRequest_Create:
-			opType = "CREATE"
-			recordSize = len(op.Create.Record)
 			atomic.AddInt64(&m.createCount, 1)
-			
-			if m.verbose {
-				log.Printf("➕ CREATE: repo=%s collection=%s rkey=%s cid=%s size=%d",
-					req.Repo, req.Collection, req.Rkey, op.Create.Cid, recordSize)
-			}
-			
 		case *pb.OperationRequest_Update:
-			opType = "UPDATE"
-			recordSize = len(op.Update.Record)
 			atomic.AddInt64(&m.updateCount, 1)
-			
-			if m.verbose {
-				log.Printf("📝 UPDATE: repo=%s collection=%s rkey=%s cid=%s size=%d",
-					req.Repo, req.Collection, req.Rkey, op.Update.Cid, recordSize)
-			}
-			
 		case *pb.OperationRequest_Delete:
-			opType = "DELETE"
 			atomic.AddInt64(&m.deleteCount, 1)
-			
-			if m.verbose {
-				log.Printf("🗑️  DELETE: repo=%s collection=%s rkey=%s",
-					req.Repo, req.Collection, req.Rkey)
-			}
 		}
 		
-		// Simulate failures if configured
-		shouldFail := false
-		if m.failRate > 0 && (time.Now().UnixNano()%100) < int64(m.failRate*100) {
-			shouldFail = true
-			atomic.AddInt64(&m.errorCount, 1)
-		}
-		
-		// Send response
-		resp := &pb.OperationResponse{
-			Success: !shouldFail,
-			Seq:     req.Seq,
-		}
-		
-		if shouldFail {
-			resp.Error = fmt.Sprintf("Simulated failure for %s operation", opType)
-		}
-		
-		if err := stream.Send(resp); err != nil {
-			log.Printf("❌ Error sending response: %v", err)
-			return err
-		}
+		// NO RESPONSE - just continue to next message
 	}
 }
 

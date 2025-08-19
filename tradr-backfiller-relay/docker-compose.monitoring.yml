@@ -44,7 +44,7 @@ services:
       context: .
       dockerfile: test/mock-ingester/Dockerfile
     container_name: relay-monitor-ingester
-    command: ["-verbose", "-stats", "5", "-port", "50052"]
+    command: ["-stats", "5", "-port", "50052"]
     ports:
       - "50053:50052"
     networks:
