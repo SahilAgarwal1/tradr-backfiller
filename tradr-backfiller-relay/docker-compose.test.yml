@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for storing backfill state
+  postgres:
+    image: postgres:15-alpine
+    container_name: relay-test-postgres
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: backfiller_relay
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d backfiller_relay"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # Mock Ingester to receive gRPC messages
+  mock-ingester:
+    build:
+      context: .
+      dockerfile: test/mock-ingester/Dockerfile
+    container_name: relay-test-ingester
+    command: ["-verbose", "-stats", "5", "-port", "50052"]
+    ports:
+      - "50052:50052"
+    networks:
+      - test-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # The relay being tested
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: relay-test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock-ingester:
+        condition: service_started
+    environment:
+      # Database
+      DATABASE_DSN: "postgres://relay:relay@postgres:5432/backfiller_relay?sslmode=disable"
+      DATABASE_MAX_OPEN_CONNS: "25"
+      DATABASE_MAX_IDLE_CONNS: "25"
+      
+      # Firehose - Using the public Bluesky firehose
+      FIREHOSE_HOST: "wss://bsky.network"
+      
+      # Filter for testing - only process posts and profiles
+      NSID_FILTER: "app.bsky.feed.post,app.bsky.graph.follow,app.bsky.actor.profile"
+      
+      # Ingester addresses
+      INGESTER_ADDRESSES: "mock-ingester:50052"
+      
+      # Service configuration
+      RELAY_NAME: "test-relay"
+      LOG_LEVEL: "debug"
+      
+      # Backfiller settings
+      PARALLEL_BACKFILLS: "2"
+      PARALLEL_RECORD_CREATES: "10"
+      
+      # GRPC settings
+      GRPC_MAX_MESSAGE_SIZE: "10485760"  # 10MB
+      GRPC_KEEPALIVE_TIME: "30"
+      GRPC_KEEPALIVE_TIMEOUT: "10"
+      
+      # Metrics
+      METRICS_PORT: "9090"
+    ports:
+      - "9090:9090"  # Prometheus metrics
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+    networks:
+      - test-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: relay-test-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./test/prometheus-test.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-test-data:/prometheus
+    networks:
+      - test-network
+    depends_on:
+      - relay
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  prometheus-test-data:
+    driver: local
