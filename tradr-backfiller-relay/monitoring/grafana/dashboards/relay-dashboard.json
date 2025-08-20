@@ -211,11 +211,128 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_operations_sent_total[1m])",
+          "expr": "sum(rate(relay_operations_total[1m]))",
           "refId": "A"
         }
       ],
-      "title": "Operations/sec",
+      "title": "Total Operations/sec",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null}
+            ]
+          },
+          "unit": "ops"
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 4},
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "sum(rate(relay_operations_total{source=\"firehose\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Firehose Ops/sec",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null}
+            ]
+          },
+          "unit": "ops"
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 4},
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "sum(rate(relay_operations_total{source=\"backfill\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Backfill Ops/sec",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "orange", "value": null}
+            ]
+          },
+          "unit": "MBs"
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 4},
+      "id": 12,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "sum(rate(relay_bytes_processed_total[1m])) / 1048576",
+          "refId": "A"
+        }
+      ],
+      "title": "MB/sec",
       "type": "stat"
     },
     {
@@ -365,12 +482,17 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_operations_total[1m])",
-          "legendFormat": "{{operation}}",
+          "expr": "rate(relay_operations_total{source=\"firehose\"}[1m])",
+          "legendFormat": "Firehose: {{operation}}",
           "refId": "A"
+        },
+        {
+          "expr": "rate(relay_operations_total{source=\"backfill\"}[1m])",
+          "legendFormat": "Backfill: {{operation}}",
+          "refId": "B"
         }
       ],
-      "title": "Operations Rate by Type",
+      "title": "Operations Rate by Source & Type",
       "type": "timeseries"
     },
     {

@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -82,6 +85,22 @@ func main() {
 	go func() {
 		if err := metrics.StartServer(ctx, cfg.Metrics); err != nil {
 			log.Error().Err(err).Msg("Metrics server error")
+		}
+	}()
+	
+	// Start pprof server for profiling
+	go func() {
+		pprofPort := 6060
+		log.Info().Int("port", pprofPort).Msg("Starting pprof server for profiling")
+		log.Info().Msg("Available endpoints:")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/          - pprof index")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/profile   - CPU profile")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/heap      - heap profile")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/goroutine - goroutine profile")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/block     - block profile")
+		log.Info().Msg("  http://localhost:6060/debug/pprof/mutex     - mutex profile")
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", pprofPort), nil); err != nil {
+			log.Error().Err(err).Msg("pprof server error")
 		}
 	}()
 	

@@ -17,9 +17,10 @@ import (
 // Collector collects and exposes metrics for Prometheus
 type Collector struct {
 	// Counters for operations
-	operationsTotal   *prometheus.CounterVec   // Total operations by type
+	operationsTotal   *prometheus.CounterVec   // Total operations by type and source
 	operationsSent    prometheus.Counter       // Successfully sent to Ingester
 	operationsAcked   prometheus.Counter       // Acknowledged by Ingester
+	bytesProcessed    *prometheus.CounterVec   // Total bytes processed by source
 	
 	// Histograms for latencies
 	operationLatency *prometheus.HistogramVec  // Latency by operation type
@@ -59,9 +60,9 @@ func New(serviceName string) *Collector {
 		operationsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "relay_operations_total",
-				Help: "Total number of operations processed by type",
+				Help: "Total number of operations processed by type and source",
 			},
-			[]string{"operation", "service"},
+			[]string{"operation", "source", "service"},
 		),
 		
 		operationsSent: prometheus.NewCounter(
@@ -78,6 +79,14 @@ func New(serviceName string) *Collector {
 			},
 		),
 		
+		bytesProcessed: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "relay_bytes_processed_total",
+				Help: "Total bytes processed by source",
+			},
+			[]string{"source"},
+		),
+		
 		// Define latency histogram
 		operationLatency: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -85,7 +94,7 @@ func New(serviceName string) *Collector {
 				Help:    "Operation processing duration in seconds",
 				Buckets: prometheus.DefBuckets,
 			},
-			[]string{"operation", "service"},
+			[]string{"operation", "source", "service"},
 		),
 		
 		// Define gauges for gRPC connections
@@ -147,7 +156,7 @@ func New(serviceName string) *Collector {
 				Name: "relay_errors_total",
 				Help: "Total number of errors by type",
 			},
-			[]string{"operation", "error_type", "service"},
+			[]string{"operation", "error_type", "source", "service"},
 		),
 	}
 	
@@ -156,6 +165,7 @@ func New(serviceName string) *Collector {
 		c.operationsTotal,
 		c.operationsSent,
 		c.operationsAcked,
+		c.bytesProcessed,
 		c.operationLatency,
 		c.healthyIngesters,
 		c.totalIngesters,
@@ -173,14 +183,19 @@ func New(serviceName string) *Collector {
 	return c
 }
 
-// IncrementOperationCount increments the counter for a specific operation type
-func (c *Collector) IncrementOperationCount(operation string) {
-	c.operationsTotal.WithLabelValues(operation, c.serviceName).Inc()
+// IncrementOperationCount increments the counter for a specific operation type and source
+func (c *Collector) IncrementOperationCount(operation string, source string) {
+	c.operationsTotal.WithLabelValues(operation, source, c.serviceName).Inc()
 }
 
 // RecordOperationLatency records the latency for an operation
-func (c *Collector) RecordOperationLatency(operation string, duration time.Duration) {
-	c.operationLatency.WithLabelValues(operation, c.serviceName).Observe(duration.Seconds())
+func (c *Collector) RecordOperationLatency(operation string, source string, duration time.Duration) {
+	c.operationLatency.WithLabelValues(operation, source, c.serviceName).Observe(duration.Seconds())
+}
+
+// AddBytesProcessed adds to the bytes processed counter
+func (c *Collector) AddBytesProcessed(source string, bytes int) {
+	c.bytesProcessed.WithLabelValues(source).Add(float64(bytes))
 }
 
 // IncrementSentCount increments the sent counter
@@ -195,7 +210,7 @@ func (c *Collector) IncrementAcknowledgedCount() {
 }
 
 // IncrementErrorCount increments the error counter
-func (c *Collector) IncrementErrorCount(operation string, err error) {
+func (c *Collector) IncrementErrorCount(operation string, source string, err error) {
 	errorType := "unknown"
 	if err != nil {
 		// Categorize error types
@@ -209,7 +224,7 @@ func (c *Collector) IncrementErrorCount(operation string, err error) {
 		}
 	}
 	
-	c.errorsTotal.WithLabelValues(operation, errorType, c.serviceName).Inc()
+	c.errorsTotal.WithLabelValues(operation, errorType, source, c.serviceName).Inc()
 	atomic.AddUint64(&c.errorCount, 1)
 }
 
