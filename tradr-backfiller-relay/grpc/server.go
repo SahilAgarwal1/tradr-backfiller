@@ -153,36 +153,17 @@ func (s *Server) StreamOperations(stream pb.IngesterService_StreamOperationsServ
 			Msg("Ingester client disconnected")
 	}()
 	
-	// Start a goroutine to handle responses from this client
+	// Optional: Handle ACKs from client but don't log them
 	go func() {
 		for {
-			// Receive ACKs (OperationResponse) from client
-			resp, err := stream.Recv()
+			// Receive ACKs but ignore them - true firehose style
+			_, err := stream.Recv()
 			if err != nil {
-				log.Debug().
-					Str("client_id", clientID).
-					Err(err).
-					Msg("Client disconnected or error receiving")
+				// Client disconnected, stop receiving
 				return
 			}
-			
-			// Track incoming gRPC bytes (ACK responses are small, ~50 bytes)
-			s.metrics.AddGRPCBytesIn(50)
-			
-			// Process ACK
-			if resp.Success {
-				s.metrics.IncrementAcknowledgedCount()
-				log.Debug().
-					Str("client_id", clientID).
-					Int64("seq", resp.Seq).
-					Msg("Received ACK from client")
-			} else {
-				log.Warn().
-					Str("client_id", clientID).
-					Str("error", resp.Error).
-					Int64("seq", resp.Seq).
-					Msg("Client reported error processing operation")
-			}
+			// Just count ACKs for metrics, no logging
+			s.metrics.IncrementAcknowledgedCount()
 		}
 	}()
 	
@@ -236,30 +217,30 @@ func (s *Server) Broadcast(req *pb.OperationRequest) error {
 		}
 	}
 	
-	// Send to all clients
+	// Firehose style - send to all clients, don't wait
 	for _, client := range clients {
 		client.mu.Lock()
 		if !client.active {
 			client.mu.Unlock()
 			continue
 		}
-		
-		// Server sends OperationRequest to client
-		err := client.stream.Send(req)
-		if err != nil {
-			log.Debug().
-				Str("client_id", client.id).
-				Err(err).
-				Msg("Failed to send to client")
-			client.active = false
-			lastErr = err
-		} else {
-			successCount++
-			s.metrics.IncrementSentCount()
-			s.metrics.IncrementGRPCMessagesSent()
-			s.metrics.AddGRPCBytesOut(msgSize)
-		}
 		client.mu.Unlock()
+		
+		// Fire and forget - send async
+		go func(c *Client, r *pb.OperationRequest) {
+			err := c.stream.Send(r)
+			if err != nil {
+				// Client is slow or disconnected, mark inactive
+				c.mu.Lock()
+				c.active = false
+				c.mu.Unlock()
+			} else {
+				s.metrics.IncrementSentCount()
+				s.metrics.IncrementGRPCMessagesSent()
+				s.metrics.AddGRPCBytesOut(msgSize)
+			}
+		}(client, req)
+		successCount++
 	}
 	
 	if successCount == 0 && lastErr != nil {

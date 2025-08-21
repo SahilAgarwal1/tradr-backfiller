@@ -56,7 +56,7 @@ relay_backfill_active_jobs:
       retry_count,
       EXTRACT(EPOCH FROM (NOW() - updated_at)) as seconds_since_update
     FROM gorm_db_jobs 
-    WHERE state IN ('in_progress', 'enqueued')
+    WHERE state = 'in_progress'
     ORDER BY updated_at DESC
     LIMIT 20
   metrics:
