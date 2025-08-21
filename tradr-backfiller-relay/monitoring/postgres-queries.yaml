@@ -1,108 +1,62 @@
-backfill_jobs:
-  query: |
-    SELECT 
-      state,
-      COUNT(*) as count
-    FROM gorm_db_jobs
-    GROUP BY state
-  metrics:
-    - state:
-        usage: "LABEL"
-        description: "State of the backfill job (enqueued, in_progress, complete, failed)"
-    - count:
-        usage: "GAUGE"
-        description: "Number of jobs in this state"
+# Custom queries for PostgreSQL exporter to expose backfill metrics
 
-backfill_queue_size:
-  query: |
-    SELECT 
-      COUNT(*) as queued_jobs
-    FROM gorm_db_jobs
-    WHERE state = 'enqueued'
+relay_backfill_jobs_active:
+  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'in_progress'"
   metrics:
-    - queued_jobs:
+    - value:
+        usage: "GAUGE"
+        description: "Number of backfill jobs currently being processed"
+
+relay_backfill_jobs_pending:
+  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'enqueued'"
+  metrics:
+    - value:
         usage: "GAUGE"
         description: "Number of backfill jobs waiting to be processed"
 
-backfill_processing_rate:
+relay_backfill_jobs_failed:
+  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state LIKE 'failed%'"
+  metrics:
+    - value:
+        usage: "GAUGE"
+        description: "Number of backfill jobs that have failed"
+
+relay_backfill_jobs_completed:
+  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'complete'"
+  metrics:
+    - value:
+        usage: "GAUGE"
+        description: "Number of backfill jobs completed"
+
+relay_backfill_completed_total:
+  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'complete'"
+  metrics:
+    - value:
+        usage: "COUNTER"
+        description: "Total repos completed (use with rate() for repos/sec)"
+
+relay_backfill_completed_recent:
   query: |
     SELECT 
-      COUNT(*) as completed_last_hour
-    FROM gorm_db_jobs
-    WHERE state = 'complete'
-      AND updated_at > NOW() - INTERVAL '1 hour'
+      COUNT(*) as value
+    FROM gorm_db_jobs 
+    WHERE state = 'complete' 
+      AND updated_at > NOW() - INTERVAL '5 minutes'
   metrics:
-    - completed_last_hour:
+    - value:
         usage: "GAUGE"
-        description: "Number of backfill jobs completed in the last hour"
+        description: "Repos completed in last 5 minutes"
 
-backfill_avg_duration:
-  query: |
-    SELECT 
-      EXTRACT(EPOCH FROM AVG(updated_at - created_at)) as avg_duration_seconds
-    FROM gorm_db_jobs
-    WHERE state = 'complete'
-      AND updated_at > NOW() - INTERVAL '1 hour'
-  metrics:
-    - avg_duration_seconds:
-        usage: "GAUGE"
-        description: "Average duration of completed backfill jobs in seconds"
-
-cursor_position:
-  query: |
-    SELECT 
-      seq as cursor_position
-    FROM last_seqs
-    WHERE id = 1
-  metrics:
-    - cursor_position:
-        usage: "GAUGE"
-        description: "Current firehose cursor position"
-
-backfill_oldest_queued:
-  query: |
-    SELECT 
-      COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0) as oldest_queued_age_seconds
-    FROM gorm_db_jobs
-    WHERE state = 'enqueued'
-  metrics:
-    - oldest_queued_age_seconds:
-        usage: "GAUGE"
-        description: "Age of the oldest queued job in seconds"
-
-backfill_active_jobs:
+relay_backfill_active_jobs:
   query: |
     SELECT 
       repo,
       state,
+      rev,
       retry_count,
-      EXTRACT(EPOCH FROM (NOW() - updated_at)) as processing_time_seconds
-    FROM gorm_db_jobs
-    WHERE state = 'in_progress'
-    LIMIT 20
-  metrics:
-    - repo:
-        usage: "LABEL"
-        description: "Repository DID"
-    - state:
-        usage: "LABEL"
-        description: "Job state"
-    - retry_count:
-        usage: "GAUGE"
-        description: "Number of retries for this job"
-    - processing_time_seconds:
-        usage: "GAUGE"
-        description: "Time spent processing this job in seconds"
-
-backfill_failed_jobs:
-  query: |
-    SELECT 
-      repo,
-      state,
-      retry_count,
-      EXTRACT(EPOCH FROM (NOW() - updated_at)) as time_since_failure_seconds
-    FROM gorm_db_jobs
-    WHERE state LIKE 'failed%'
+      EXTRACT(EPOCH FROM (NOW() - updated_at)) as seconds_since_update
+    FROM gorm_db_jobs 
+    WHERE state IN ('in_progress', 'enqueued')
     ORDER BY updated_at DESC
     LIMIT 20
   metrics:
@@ -111,53 +65,13 @@ backfill_failed_jobs:
         description: "Repository DID"
     - state:
         usage: "LABEL"
-        description: "Failure state/reason"
+        description: "Job state"
+    - rev:
+        usage: "LABEL"
+        description: "Current revision"
     - retry_count:
         usage: "GAUGE"
-        description: "Number of retries for this job"
-    - time_since_failure_seconds:
+        description: "Number of retries"
+    - seconds_since_update:
         usage: "GAUGE"
-        description: "Time since job failed in seconds"
-
-backfill_retry_queue:
-  query: |
-    SELECT 
-      COUNT(*) as retry_pending,
-      AVG(retry_count) as avg_retry_count,
-      MAX(retry_count) as max_retry_count
-    FROM gorm_db_jobs
-    WHERE state LIKE 'failed%'
-      AND (retry_after IS NULL OR retry_after < NOW())
-  metrics:
-    - retry_pending:
-        usage: "GAUGE"
-        description: "Number of jobs pending retry"
-    - avg_retry_count:
-        usage: "GAUGE"
-        description: "Average retry count for pending jobs"
-    - max_retry_count:
-        usage: "GAUGE"
-        description: "Maximum retry count for pending jobs"
-
-backfill_throughput:
-  query: |
-    WITH intervals AS (
-      SELECT 
-        DATE_TRUNC('minute', updated_at) as minute,
-        COUNT(*) as completed_per_minute
-      FROM gorm_db_jobs
-      WHERE state = 'complete'
-        AND updated_at > NOW() - INTERVAL '10 minutes'
-      GROUP BY minute
-    )
-    SELECT 
-      COALESCE(AVG(completed_per_minute), 0) as avg_throughput,
-      COALESCE(MAX(completed_per_minute), 0) as max_throughput
-    FROM intervals
-  metrics:
-    - avg_throughput:
-        usage: "GAUGE"
-        description: "Average backfill throughput (jobs/minute)"
-    - max_throughput:
-        usage: "GAUGE"
-        description: "Maximum backfill throughput (jobs/minute)"
+        description: "Seconds since last update"

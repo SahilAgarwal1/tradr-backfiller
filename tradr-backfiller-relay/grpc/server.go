@@ -166,6 +166,9 @@ func (s *Server) StreamOperations(stream pb.IngesterService_StreamOperationsServ
 				return
 			}
 			
+			// Track incoming gRPC bytes (ACK responses are small, ~50 bytes)
+			s.metrics.AddGRPCBytesIn(50)
+			
 			// Process ACK
 			if resp.Success {
 				s.metrics.IncrementAcknowledgedCount()
@@ -218,6 +221,21 @@ func (s *Server) Broadcast(req *pb.OperationRequest) error {
 	var successCount int
 	var lastErr error
 	
+	// Calculate approximate message size for metrics
+	msgSize := 100 // Base overhead
+	if req.Operation != nil {
+		switch op := req.Operation.(type) {
+		case *pb.OperationRequest_Create:
+			if op.Create != nil && op.Create.Record != nil {
+				msgSize += len(op.Create.Record)
+			}
+		case *pb.OperationRequest_Update:
+			if op.Update != nil && op.Update.Record != nil {
+				msgSize += len(op.Update.Record)
+			}
+		}
+	}
+	
 	// Send to all clients
 	for _, client := range clients {
 		client.mu.Lock()
@@ -238,6 +256,8 @@ func (s *Server) Broadcast(req *pb.OperationRequest) error {
 		} else {
 			successCount++
 			s.metrics.IncrementSentCount()
+			s.metrics.IncrementGRPCMessagesSent()
+			s.metrics.AddGRPCBytesOut(msgSize)
 		}
 		client.mu.Unlock()
 	}

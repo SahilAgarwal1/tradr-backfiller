@@ -17,24 +17,29 @@ import (
 // Collector collects and exposes metrics for Prometheus
 type Collector struct {
 	// Counters for operations
-	operationsTotal   *prometheus.CounterVec   // Total operations by type and source
+	operationsTotal   *prometheus.CounterVec   // Total operations by type
 	operationsSent    prometheus.Counter       // Successfully sent to Ingester
 	operationsAcked   prometheus.Counter       // Acknowledged by Ingester
-	bytesProcessed    *prometheus.CounterVec   // Total bytes processed by source
+	
+	
+	// gRPC message tracking
+	grpcMessagesSent  prometheus.Counter       // Total gRPC messages sent
+	grpcBytesOut      prometheus.Counter       // Total bytes sent via gRPC
+	grpcBytesIn       prometheus.Counter       // Total bytes received via gRPC
+	
+	// Network I/O tracking
+	networkBytesIn    prometheus.Counter       // Total network bytes received
+	networkBytesOut   prometheus.Counter       // Total network bytes sent
 	
 	// Histograms for latencies
 	operationLatency *prometheus.HistogramVec  // Latency by operation type
+	repoProcessTime  prometheus.Histogram      // Time to process a full repo
 	
 	// Gauges for current state
 	healthyIngesters    prometheus.Gauge       // Number of healthy Ingester connections
 	totalIngesters      prometheus.Gauge       // Total number of configured Ingesters
 	grpcConnectionState *prometheus.GaugeVec   // State of each gRPC connection (0=down, 1=up)
 	
-	// Backfill metrics
-	backfillJobsActive  prometheus.Gauge         // Number of active backfill jobs
-	backfillJobsPending prometheus.Gauge         // Number of pending backfill jobs
-	backfillJobsFailed  prometheus.Gauge         // Number of failed backfill jobs
-	backfillRepoSize    *prometheus.GaugeVec     // Size of repos being backfilled
 	
 	// Error tracking
 	errorsTotal     *prometheus.CounterVec     // Errors by type and operation
@@ -60,9 +65,9 @@ func New(serviceName string) *Collector {
 		operationsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "relay_operations_total",
-				Help: "Total number of operations processed by type and source",
+				Help: "Total number of operations processed by type",
 			},
-			[]string{"operation", "source", "service"},
+			[]string{"operation", "service"},
 		),
 		
 		operationsSent: prometheus.NewCounter(
@@ -79,12 +84,42 @@ func New(serviceName string) *Collector {
 			},
 		),
 		
-		bytesProcessed: prometheus.NewCounterVec(
+		
+		// gRPC message tracking
+		grpcMessagesSent: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Name: "relay_bytes_processed_total",
-				Help: "Total bytes processed by source",
+				Name: "relay_grpc_messages_sent_total",
+				Help: "Total number of gRPC messages sent to ingesters",
 			},
-			[]string{"source"},
+		),
+		
+		grpcBytesOut: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_grpc_bytes_sent_total",
+				Help: "Total bytes sent via gRPC",
+			},
+		),
+		
+		grpcBytesIn: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_grpc_bytes_received_total",
+				Help: "Total bytes received via gRPC",
+			},
+		),
+		
+		// Network I/O tracking
+		networkBytesIn: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_network_bytes_in_total",
+				Help: "Total network bytes received (firehose + backfill)",
+			},
+		),
+		
+		networkBytesOut: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_network_bytes_out_total",
+				Help: "Total network bytes sent",
+			},
 		),
 		
 		// Define latency histogram
@@ -94,7 +129,15 @@ func New(serviceName string) *Collector {
 				Help:    "Operation processing duration in seconds",
 				Buckets: prometheus.DefBuckets,
 			},
-			[]string{"operation", "source", "service"},
+			[]string{"operation", "service"},
+		),
+		
+		repoProcessTime: prometheus.NewHistogram(
+			prometheus.HistogramOpts{
+				Name:    "relay_repo_process_duration_seconds",
+				Help:    "Time to fully process a repository",
+				Buckets: []float64{1, 5, 10, 30, 60, 120, 300, 600},
+			},
 		),
 		
 		// Define gauges for gRPC connections
@@ -120,35 +163,6 @@ func New(serviceName string) *Collector {
 			[]string{"address", "index"},
 		),
 		
-		// Define backfill metrics
-		backfillJobsActive: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "relay_backfill_jobs_active",
-				Help: "Number of backfill jobs currently being processed",
-			},
-		),
-		
-		backfillJobsPending: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "relay_backfill_jobs_pending",
-				Help: "Number of backfill jobs waiting to be processed",
-			},
-		),
-		
-		backfillJobsFailed: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "relay_backfill_jobs_failed",
-				Help: "Number of backfill jobs that have failed",
-			},
-		),
-		
-		backfillRepoSize: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "relay_backfill_repo_size",
-				Help: "Size of repositories being backfilled (in bytes)",
-			},
-			[]string{"repo"},
-		),
 		
 		// Define error counter
 		errorsTotal: prometheus.NewCounterVec(
@@ -156,7 +170,7 @@ func New(serviceName string) *Collector {
 				Name: "relay_errors_total",
 				Help: "Total number of errors by type",
 			},
-			[]string{"operation", "error_type", "source", "service"},
+			[]string{"operation", "error_type", "service"},
 		),
 	}
 	
@@ -165,15 +179,16 @@ func New(serviceName string) *Collector {
 		c.operationsTotal,
 		c.operationsSent,
 		c.operationsAcked,
-		c.bytesProcessed,
+		c.grpcMessagesSent,
+		c.grpcBytesOut,
+		c.grpcBytesIn,
+		c.networkBytesIn,
+		c.networkBytesOut,
 		c.operationLatency,
+		c.repoProcessTime,
 		c.healthyIngesters,
 		c.totalIngesters,
 		c.grpcConnectionState,
-		c.backfillJobsActive,
-		c.backfillJobsPending,
-		c.backfillJobsFailed,
-		c.backfillRepoSize,
 		c.errorsTotal,
 	)
 	
@@ -183,19 +198,14 @@ func New(serviceName string) *Collector {
 	return c
 }
 
-// IncrementOperationCount increments the counter for a specific operation type and source
-func (c *Collector) IncrementOperationCount(operation string, source string) {
-	c.operationsTotal.WithLabelValues(operation, source, c.serviceName).Inc()
+// IncrementOperationCount increments the counter for a specific operation type
+func (c *Collector) IncrementOperationCount(operation string) {
+	c.operationsTotal.WithLabelValues(operation, c.serviceName).Inc()
 }
 
 // RecordOperationLatency records the latency for an operation
-func (c *Collector) RecordOperationLatency(operation string, source string, duration time.Duration) {
-	c.operationLatency.WithLabelValues(operation, source, c.serviceName).Observe(duration.Seconds())
-}
-
-// AddBytesProcessed adds to the bytes processed counter
-func (c *Collector) AddBytesProcessed(source string, bytes int) {
-	c.bytesProcessed.WithLabelValues(source).Add(float64(bytes))
+func (c *Collector) RecordOperationLatency(operation string, duration time.Duration) {
+	c.operationLatency.WithLabelValues(operation, c.serviceName).Observe(duration.Seconds())
 }
 
 // IncrementSentCount increments the sent counter
@@ -210,7 +220,7 @@ func (c *Collector) IncrementAcknowledgedCount() {
 }
 
 // IncrementErrorCount increments the error counter
-func (c *Collector) IncrementErrorCount(operation string, source string, err error) {
+func (c *Collector) IncrementErrorCount(operation string, err error) {
 	errorType := "unknown"
 	if err != nil {
 		// Categorize error types
@@ -224,7 +234,7 @@ func (c *Collector) IncrementErrorCount(operation string, source string, err err
 		}
 	}
 	
-	c.errorsTotal.WithLabelValues(operation, errorType, source, c.serviceName).Inc()
+	c.errorsTotal.WithLabelValues(operation, errorType, c.serviceName).Inc()
 	atomic.AddUint64(&c.errorCount, 1)
 }
 
@@ -244,24 +254,35 @@ func (c *Collector) UpdateConnectionState(address string, index int, state float
 	c.grpcConnectionState.WithLabelValues(address, fmt.Sprintf("%d", index)).Set(state)
 }
 
-// SetBackfillJobsActive sets the number of active backfill jobs
-func (c *Collector) SetBackfillJobsActive(count int) {
-	c.backfillJobsActive.Set(float64(count))
+
+// RecordRepoProcessTime records the time it took to process a repo
+func (c *Collector) RecordRepoProcessTime(duration time.Duration) {
+	c.repoProcessTime.Observe(duration.Seconds())
 }
 
-// SetBackfillJobsPending sets the number of pending backfill jobs
-func (c *Collector) SetBackfillJobsPending(count int) {
-	c.backfillJobsPending.Set(float64(count))
+// IncrementGRPCMessagesSent increments the gRPC messages sent counter
+func (c *Collector) IncrementGRPCMessagesSent() {
+	c.grpcMessagesSent.Inc()
 }
 
-// SetBackfillJobsFailed sets the number of failed backfill jobs
-func (c *Collector) SetBackfillJobsFailed(count int) {
-	c.backfillJobsFailed.Set(float64(count))
+// AddGRPCBytesOut adds to the gRPC bytes sent counter
+func (c *Collector) AddGRPCBytesOut(bytes int) {
+	c.grpcBytesOut.Add(float64(bytes))
 }
 
-// SetBackfillRepoSize sets the size of a repo being backfilled
-func (c *Collector) SetBackfillRepoSize(repo string, size float64) {
-	c.backfillRepoSize.WithLabelValues(repo).Set(size)
+// AddGRPCBytesIn adds to the gRPC bytes received counter
+func (c *Collector) AddGRPCBytesIn(bytes int) {
+	c.grpcBytesIn.Add(float64(bytes))
+}
+
+// AddNetworkBytesIn adds to the network bytes received counter
+func (c *Collector) AddNetworkBytesIn(bytes int) {
+	c.networkBytesIn.Add(float64(bytes))
+}
+
+// AddNetworkBytesOut adds to the network bytes sent counter
+func (c *Collector) AddNetworkBytesOut(bytes int) {
+	c.networkBytesOut.Add(float64(bytes))
 }
 
 // Removed buffer-related methods:

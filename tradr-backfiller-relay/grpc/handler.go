@@ -32,24 +32,18 @@ func NewHandler(server *Server, metrics *metrics.Collector) *Handler {
 
 // HandleCreateRecord broadcasts a create operation to all connected clients
 func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
-	// Determine source based on seq (0 = backfill, >0 = firehose)
-	source := "firehose"
-	if seq == 0 {
-		source = "backfill"
-	}
-	
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
-		h.metrics.RecordOperationLatency("create", source, time.Since(start))
+		h.metrics.RecordOperationLatency("create", time.Since(start))
 	}()
 
 	// Increment operation counter
-	h.metrics.IncrementOperationCount("create", source)
+	h.metrics.IncrementOperationCount("create")
 	
-	// Track bytes processed (record size)
+	// Track incoming network bytes (from firehose/backfill)
 	if rec != nil {
-		h.metrics.AddBytesProcessed(source, len(*rec))
+		h.metrics.AddNetworkBytesIn(len(*rec))
 	}
 
 	// Validate inputs
@@ -91,7 +85,7 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 	// Broadcast to all connected clients
 	err := h.server.Broadcast(req)
 	if err != nil {
-		h.metrics.IncrementErrorCount("create", source, err)
+		h.metrics.IncrementErrorCount("create", err)
 		log.Debug().
 			Err(err).
 			Str("repo", repo).
@@ -105,24 +99,18 @@ func (h *Handler) HandleCreateRecord(ctx context.Context, repo string, rev strin
 
 // HandleUpdateRecord broadcasts an update operation to all connected clients
 func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev string, path string, rec *[]byte, cid *cid.Cid, seq int64) error {
-	// Determine source based on seq (0 = backfill, >0 = firehose)
-	source := "firehose"
-	if seq == 0 {
-		source = "backfill"
-	}
-	
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
-		h.metrics.RecordOperationLatency("update", source, time.Since(start))
+		h.metrics.RecordOperationLatency("update", time.Since(start))
 	}()
 
 	// Increment operation counter
-	h.metrics.IncrementOperationCount("update", source)
+	h.metrics.IncrementOperationCount("update")
 	
-	// Track bytes processed (record size)
+	// Track incoming network bytes (from firehose/backfill)
 	if rec != nil {
-		h.metrics.AddBytesProcessed(source, len(*rec))
+		h.metrics.AddNetworkBytesIn(len(*rec))
 	}
 
 	// Validate inputs
@@ -164,7 +152,7 @@ func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev strin
 	// Broadcast to all connected clients
 	err := h.server.Broadcast(req)
 	if err != nil {
-		h.metrics.IncrementErrorCount("update", source, err)
+		h.metrics.IncrementErrorCount("update", err)
 		log.Debug().
 			Err(err).
 			Str("repo", repo).
@@ -178,20 +166,14 @@ func (h *Handler) HandleUpdateRecord(ctx context.Context, repo string, rev strin
 
 // HandleDeleteRecord broadcasts a delete operation to all connected clients
 func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev string, path string, seq int64) error {
-	// Determine source based on seq (0 = backfill, >0 = firehose)
-	source := "firehose"
-	if seq == 0 {
-		source = "backfill"
-	}
-	
 	// Track timing for metrics
 	start := time.Now()
 	defer func() {
-		h.metrics.RecordOperationLatency("delete", source, time.Since(start))
+		h.metrics.RecordOperationLatency("delete", time.Since(start))
 	}()
 
 	// Increment operation counter
-	h.metrics.IncrementOperationCount("delete", source)
+	h.metrics.IncrementOperationCount("delete")
 
 	// Validate inputs
 	if repo == "" {
@@ -229,7 +211,7 @@ func (h *Handler) HandleDeleteRecord(ctx context.Context, repo string, rev strin
 	// Broadcast to all connected clients
 	err := h.server.Broadcast(req)
 	if err != nil {
-		h.metrics.IncrementErrorCount("delete", source, err)
+		h.metrics.IncrementErrorCount("delete", err)
 		log.Debug().
 			Err(err).
 			Str("repo", repo).
