@@ -89,21 +89,21 @@ func NewRelay(db *gorm.DB, handler Handler, cfg config.Config) (*Relay, error) {
 	return r, nil
 }
 
-// RunRelay starts the relay (equivalent to RunIndexer in search)
+// RunRelay starts the relay (following same pattern as search/indexing.go)
 func (r *Relay) RunRelay(ctx context.Context) error {
-	// Get last cursor (same as search)
+	// Get last cursor
 	cursor, err := r.getLastCursor()
 	if err != nil {
 		return fmt.Errorf("get last cursor: %w", err)
 	}
 
-	// Load and start backfill jobs (same as search)
+	// Load and start backfill jobs
 	if err := r.bfs.LoadJobs(ctx); err != nil {
 		return fmt.Errorf("loading backfill jobs: %w", err)
 	}
 	go r.bf.Start()
 
-	// Connect to firehose (same as search)
+	// Connect to firehose
 	u, err := url.Parse(r.relayHost)
 	if err != nil {
 		return fmt.Errorf("invalid relay host: %w", err)
