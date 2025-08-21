@@ -54,8 +54,8 @@ services:
   # The relay service
   relay:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: tradr-backfiller-relay/Dockerfile
     container_name: relay-monitor
     depends_on:
       postgres:

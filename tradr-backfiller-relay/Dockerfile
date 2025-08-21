@@ -9,14 +9,17 @@ RUN apk add --no-cache build-base make git
 # Set working directory
 WORKDIR /dockerbuild
 
-# Copy go.mod and go.sum first for better caching
-COPY go.mod go.sum ./
+# Copy the local indigo module (for replace directive)
+COPY indigo /indigo
+
+# Copy go.mod and go.sum first for better caching  
+COPY tradr-backfiller-relay/go.mod tradr-backfiller-relay/go.sum ./
 
 # Download dependencies - this layer will be cached unless go.mod/go.sum change
 RUN go mod download
 
-# Copy all source code
-COPY . .
+# Copy all relay source code
+COPY tradr-backfiller-relay/ .
 
 # Install protoc and Go protobuf plugins
 RUN apk add --no-cache protobuf protobuf-dev && \
