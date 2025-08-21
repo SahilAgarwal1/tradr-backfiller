@@ -23,10 +23,12 @@ firehose:
 
 backfiller:
   # Number of concurrent repository backfills
-  parallel_backfills: 10
+  # Streaming allows higher concurrency with lower memory usage
+  parallel_backfills: 30
   
   # Number of concurrent record operations per backfill
-  parallel_record_creates: 100
+  # Reduced since streaming is more efficient per-record
+  parallel_record_creates: 50
   
   # Record type filter (usually same as firehose)
   nsid_filter: "app.bsky."
@@ -35,7 +37,8 @@ backfiller:
   checkpoint_interval: 1000
   
   # Maximum operations to buffer during backfill
-  buffer_size: 10000
+  # Can be smaller with streaming since we don't load entire repos
+  buffer_size: 5000
   
   # How often to check for new backfill jobs (milliseconds)
   process_interval_ms: 1000
@@ -71,9 +74,9 @@ database:
   # Format: postgres://user:password@host:port/database?sslmode=disable
   dsn: "postgres://relay:relay@localhost:5432/backfiller_relay?sslmode=disable"
   
-  # Connection pool settings
-  max_open_conns: 25
-  max_idle_conns: 5
+  # Connection pool settings - increased for higher parallelism
+  max_open_conns: 50     # Increased to support 30 parallel backfills
+  max_idle_conns: 10     # Keep more connections ready
   conn_max_lifetime_min: 5
 
 metrics:

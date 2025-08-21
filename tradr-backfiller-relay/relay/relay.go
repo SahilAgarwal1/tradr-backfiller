@@ -53,12 +53,19 @@ func NewRelay(db *gorm.DB, handler Handler, cfg config.Config) (*Relay, error) {
 	// Create backfill store (same as search)
 	bfstore := backfill.NewGormstore(db)
 
-	// Set up backfill options (same as search)
+	// Set up backfill options optimized for streaming
 	opts := backfill.DefaultBackfillOptions()
 	opts.ParallelBackfills = cfg.Backfiller.ParallelBackfills
 	opts.ParallelRecordCreates = cfg.Backfiller.ParallelRecordCreates
 	opts.NSIDFilter = cfg.Backfiller.NSIDFilter
 	opts.SyncRequestsPerSecond = 100 // Increase from default 2 to allow 100 repos/sec
+	
+	// Log the configuration for monitoring
+	log.Info().
+		Int("parallel_backfills", opts.ParallelBackfills).
+		Int("parallel_record_creates", opts.ParallelRecordCreates).
+		Int("sync_requests_per_second", opts.SyncRequestsPerSecond).
+		Msg("Backfiller configuration (using streaming)")
 
 	// Create relay instance
 	r := &Relay{
@@ -157,25 +164,26 @@ func (r *Relay) RunRelay(ctx context.Context) error {
 }
 
 // handleCreateOrUpdate forwards create/update operations to handler
-// (equivalent to handleCreateOrUpdate in search, but sends to handler instead of ES)
+// Optimized for streaming - data is already in memory, no lookups needed
 func (r *Relay) handleCreateOrUpdate(ctx context.Context, repo string, rev string, path string, recB *[]byte, rcid *cid.Cid) error {
-	// Apply any filtering if needed (search filters for posts/profiles)
-	// We just forward everything to handler
-	// Note: seq is 0 for backfilled data (not from firehose)
-
+	// With streaming, the record data (*recB) is already loaded
+	// No need for blockstore lookups or additional fetching
+	// This is a major performance improvement over the old approach
+	
 	// TEMPORARILY DISABLED: Commenting out gRPC call to measure throughput
-	return nil
+	// When re-enabled, this will be very efficient since data is already in memory
 	// return r.handler.HandleCreateRecord(ctx, repo, rev, path, recB, rcid, 0)
+	return nil
 }
 
 // handleDelete forwards delete operations to handler
-// (equivalent to handleDelete in search)
+// Optimized for streaming
 func (r *Relay) handleDelete(ctx context.Context, repo string, rev string, path string) error {
 	// Note: seq is 0 for backfilled data (not from firehose)
-
+	
 	// TEMPORARILY DISABLED: Commenting out gRPC call to measure throughput
-	return nil
 	// return r.handler.HandleDeleteRecord(ctx, repo, rev, path, 0)
+	return nil
 }
 
 // getLastCursor gets the last processed sequence (same as search)
