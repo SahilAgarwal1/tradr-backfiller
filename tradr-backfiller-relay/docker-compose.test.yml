@@ -22,8 +22,8 @@ services:
   # Mock Ingester to receive gRPC messages
   mock-ingester:
     build:
-      context: .
-      dockerfile: test/mock-ingester/Dockerfile
+      context: ..
+      dockerfile: tradr-backfiller-relay/test/mock-ingester/Dockerfile
     container_name: relay-test-ingester
     command: ["-verbose", "-stats", "5", "-port", "50052"]
     ports:

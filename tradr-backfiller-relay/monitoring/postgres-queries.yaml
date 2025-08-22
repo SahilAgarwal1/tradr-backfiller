@@ -1,4 +1,12 @@
 # Custom queries for PostgreSQL exporter to expose backfill metrics
+# These metrics are queried directly from the database, so they persist across restarts
+
+relay_backfill_jobs_total:
+  query: "SELECT COUNT(*) as total_jobs FROM gorm_db_jobs"
+  metrics:
+    - total_jobs:
+        usage: "GAUGE"
+        description: "Total number of jobs in the database"
 
 relay_backfill_jobs_active:
   query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'in_progress'"
@@ -28,24 +36,44 @@ relay_backfill_jobs_completed:
         usage: "GAUGE"
         description: "Number of backfill jobs completed"
 
-relay_backfill_completed_total:
-  query: "SELECT COUNT(*) as value FROM gorm_db_jobs WHERE state = 'complete'"
-  metrics:
-    - value:
-        usage: "COUNTER"
-        description: "Total repos completed (use with rate() for repos/sec)"
-
-relay_backfill_completed_recent:
+relay_backfill_jobs_total_by_state:
   query: |
     SELECT 
+      state,
       COUNT(*) as value
+    FROM gorm_db_jobs
+    GROUP BY state
+  metrics:
+    - state:
+        usage: "LABEL"
+        description: "Job state"
+    - value:
+        usage: "GAUGE"
+        description: "Number of jobs in this state"
+
+relay_backfill_throughput_1m:
+  query: |
+    SELECT 
+      COUNT(*) as repos_per_minute
+    FROM gorm_db_jobs 
+    WHERE state = 'complete' 
+      AND updated_at > NOW() - INTERVAL '1 minute'
+  metrics:
+    - repos_per_minute:
+        usage: "GAUGE"
+        description: "Repos completed in last minute"
+
+relay_backfill_throughput_5m:
+  query: |
+    SELECT 
+      COUNT(*) / 5.0 as repos_per_minute
     FROM gorm_db_jobs 
     WHERE state = 'complete' 
       AND updated_at > NOW() - INTERVAL '5 minutes'
   metrics:
-    - value:
+    - repos_per_minute:
         usage: "GAUGE"
-        description: "Repos completed in last 5 minutes"
+        description: "Average repos per minute over last 5 minutes"
 
 relay_backfill_active_jobs:
   query: |

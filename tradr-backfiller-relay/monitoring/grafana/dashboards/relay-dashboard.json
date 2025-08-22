@@ -82,8 +82,8 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_backfill_completed_total_value[5m])",
-          "legendFormat": "Avg Repos/sec",
+          "expr": "relay_backfill_throughput_5m_repos_per_minute{server=\"relay-monitor-postgres:5432\"} / 60",
+          "legendFormat": "5m avg",
           "refId": "A"
         }
       ],
@@ -152,13 +152,13 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_backfill_completed_total_value[1m])",
-          "legendFormat": "1m rate",
+          "expr": "relay_backfill_throughput_1m_repos_per_minute{server=\"relay-monitor-postgres:5432\"} / 60",
+          "legendFormat": "1m avg (repos/sec)",
           "refId": "A"
         },
         {
-          "expr": "rate(relay_backfill_completed_total_value[5m])",
-          "legendFormat": "5m rate",
+          "expr": "relay_backfill_throughput_5m_repos_per_minute{server=\"relay-monitor-postgres:5432\"} / 60",
+          "legendFormat": "5m avg (repos/sec)",
           "refId": "B"
         }
       ],
@@ -227,22 +227,22 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_operations_total{operation=\"create\"}[1m])",
-          "legendFormat": "Creates/sec",
+          "expr": "relay_backfill_jobs_total_by_state_value{server=\"relay-monitor-postgres:5432\", state=\"complete\"}",
+          "legendFormat": "Completed Jobs",
           "refId": "A"
         },
         {
-          "expr": "rate(relay_operations_total{operation=\"update\"}[1m])",
-          "legendFormat": "Updates/sec",
+          "expr": "relay_backfill_jobs_total_by_state_value{server=\"relay-monitor-postgres:5432\", state=\"in_progress\"}",
+          "legendFormat": "Active Jobs",
           "refId": "B"
         },
         {
-          "expr": "rate(relay_operations_total{operation=\"delete\"}[1m])",
-          "legendFormat": "Deletes/sec",
+          "expr": "relay_backfill_jobs_total_by_state_value{server=\"relay-monitor-postgres:5432\", state=\"enqueued\"}",
+          "legendFormat": "Pending Jobs",
           "refId": "C"
         }
       ],
-      "title": "Operations per Second",
+      "title": "Jobs by State (Database)",
       "type": "timeseries"
     },
     {
@@ -263,7 +263,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         }
       },
       "gridPos": {
@@ -289,26 +289,96 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "sum(relay_operations_total)",
+          "expr": "relay_backfill_jobs_total_total_jobs{server=\"relay-monitor-postgres:5432\"}",
           "legendFormat": "Total Ops",
           "refId": "A"
         }
       ],
-      "title": "Total Operations",
+      "title": "Total Jobs (Database)",
       "type": "stat"
     },
     {
       "datasource": "Prometheus",
-      "description": "Network and gRPC communication metrics",
+      "description": "Actual throughput in repositories per minute",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          },
+          "unit": "repos/min"
+        }
+      },
       "gridPos": {
-        "h": 1,
-        "w": 24,
+        "h": 6,
+        "w": 12,
         "x": 0,
         "y": 7
       },
-      "id": 101,
-      "title": "📡 Network & gRPC",
-      "type": "row"
+      "id": 104,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "relay_backfill_throughput_1m_repos_per_minute{server=\"relay-monitor-postgres:5432\"}",
+          "legendFormat": "1m throughput",
+          "refId": "A"
+        },
+        {
+          "expr": "relay_backfill_throughput_5m_repos_per_minute{server=\"relay-monitor-postgres:5432\"}",
+          "legendFormat": "5m throughput",
+          "refId": "B"
+        }
+      ],
+      "title": "Actual Throughput (repos/minute)",
+      "type": "timeseries"
     },
     {
       "datasource": "Prometheus",
@@ -356,7 +426,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 13
       },
       "id": 5,
       "options": {
@@ -372,12 +442,12 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_grpc_messages_sent_total[1m])",
+          "expr": "0",
           "legendFormat": "Messages/sec",
           "refId": "A"
         }
       ],
-      "title": "gRPC Message Rate",
+      "title": "[Deprecated] gRPC Message Rate",
       "type": "timeseries"
     },
     {
@@ -442,17 +512,17 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_grpc_bytes_sent_total[1m])",
+          "expr": "0",
           "legendFormat": "Bytes Out",
           "refId": "A"
         },
         {
-          "expr": "rate(relay_grpc_bytes_received_total[1m])",
+          "expr": "0",
           "legendFormat": "Bytes In",
           "refId": "B"
         }
       ],
-      "title": "gRPC Throughput",
+      "title": "[Deprecated] gRPC Throughput",
       "type": "timeseries"
     },
     {
@@ -517,17 +587,17 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_network_bytes_in_total[1m])",
+          "expr": "0",
           "legendFormat": "Network In",
           "refId": "A"
         },
         {
-          "expr": "rate(relay_network_bytes_out_total[1m])",
+          "expr": "0",
           "legendFormat": "Network Out",
           "refId": "B"
         }
       ],
-      "title": "Network I/O",
+      "title": "[Deprecated] Network I/O",
       "type": "timeseries"
     },
     {
@@ -586,7 +656,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         }
       },
       "gridPos": {
@@ -609,27 +679,27 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "relay_backfill_jobs_active_value",
+          "expr": "relay_backfill_jobs_active_value{server=\"relay-monitor-postgres:5432\"}",
           "legendFormat": "Active (in_progress)",
           "refId": "A"
         },
         {
-          "expr": "relay_backfill_jobs_pending_value",
+          "expr": "relay_backfill_jobs_pending_value{server=\"relay-monitor-postgres:5432\"}",
           "legendFormat": "Pending (enqueued)",
           "refId": "B"
         },
         {
-          "expr": "relay_backfill_jobs_failed_value",
+          "expr": "relay_backfill_jobs_failed_value{server=\"relay-monitor-postgres:5432\"}",
           "legendFormat": "Failed",
           "refId": "C"
         },
         {
-          "expr": "relay_backfill_jobs_completed_value",
+          "expr": "relay_backfill_jobs_completed_value{server=\"relay-monitor-postgres:5432\"}",
           "legendFormat": "Completed",
           "refId": "D"
         }
       ],
-      "title": "Backfill Jobs",
+      "title": "Backfill Jobs (Database)",
       "type": "timeseries"
     },
     {
@@ -702,22 +772,22 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(relay_repo_process_duration_seconds_bucket[5m]))",
+          "expr": "0",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(relay_repo_process_duration_seconds_bucket[5m]))",
+          "expr": "0",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(relay_repo_process_duration_seconds_bucket[5m]))",
+          "expr": "0",
           "legendFormat": "p99",
           "refId": "C"
         }
       ],
-      "title": "Repository Processing Time",
+      "title": "[Deprecated] Repository Processing Time",
       "type": "timeseries"
     },
     {
@@ -814,7 +884,7 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "relay_backfill_active_jobs_seconds_since_update",
+          "expr": "relay_backfill_active_jobs_seconds_since_update{server=\"relay-monitor-postgres:5432\"}"
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -884,7 +954,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         }
       },
       "gridPos": {
@@ -908,12 +978,12 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "relay_healthy_ingesters",
+          "expr": "0",
           "legendFormat": "Connected",
           "refId": "A"
         }
       ],
-      "title": "Connected Ingesters",
+      "title": "[Deprecated] Connected Ingesters",
       "type": "gauge"
     },
     {
@@ -986,12 +1056,12 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(relay_errors_total[5m]) / (rate(relay_operations_total[5m]) + 0.0001)",
+          "expr": "0",
           "legendFormat": "{{operation}}",
           "refId": "A"
         }
       ],
-      "title": "Error Rate",
+      "title": "[Deprecated] Error Rate",
       "type": "timeseries"
     },
     {
@@ -1064,12 +1134,12 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(relay_operation_duration_seconds_bucket[5m]))",
+          "expr": "0",
           "legendFormat": "{{operation}} p95",
           "refId": "A"
         }
       ],
-      "title": "Operation Latency (p95)",
+      "title": "[Deprecated] Operation Latency (p95)",
       "type": "timeseries"
     }
   ],

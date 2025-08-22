@@ -1,0 +1,66 @@
+File: relay
+Build ID: cd1eda1d6d67ae8bed889fe4ef3879ffbb1f17c4
+Type: inuse_space
+Time: 2025-08-21 23:13:39 EDT
+Showing nodes accounting for 3402.26MB, 97.02% of 3506.84MB total
+Dropped 243 nodes (cum <= 17.53MB)
+      flat  flat%   sum%        cum   cum%
+ 2269.82MB 64.73% 64.73%  2299.33MB 65.57%  github.com/bluesky-social/indigo/repo/carutil.ldRead
+  360.02MB 10.27% 74.99%   360.02MB 10.27%  github.com/bluesky-social/indigo/repo/carutil.NewBlockWithCid (inline)
+  279.01MB  7.96% 82.95%   279.01MB  7.96%  github.com/ipfs/go-cid.CidFromBytes
+     274MB  7.81% 90.76%  3173.85MB 90.50%  github.com/bluesky-social/indigo/repo.(*readStreamBlockstore).readUntilBlock
+   59.42MB  1.69% 92.46%    59.42MB  1.69%  net/http.init.func6
+   51.52MB  1.47% 93.92%    57.02MB  1.63%  github.com/bluesky-social/indigo/mst.deserializeNodeData
+   29.51MB  0.84% 94.77%    29.51MB  0.84%  compress/flate.(*huffmanDecoder).init
+      22MB  0.63% 95.39%       22MB  0.63%  github.com/bluesky-social/indigo/backfill.(*Backfiller).BackfillRepo.func3
+   18.09MB  0.52% 95.91%    20.09MB  0.57%  github.com/bluesky-social/indigo/api/atproto.(*SyncSubscribeRepos_Commit).UnmarshalCBOR
+   15.53MB  0.44% 96.35%    19.53MB  0.56%  github.com/bluesky-social/indigo/backfill.(*Gormstore).createJobForRepo
+   13.01MB  0.37% 96.72%    47.51MB  1.35%  github.com/bluesky-social/indigo/mst.(*NodeData).UnmarshalCBOR
+       4MB  0.11% 96.84%    31.50MB   0.9%  github.com/bluesky-social/indigo/mst.(*TreeEntry).UnmarshalCBOR
+    2.50MB 0.071% 96.91%   543.88MB 15.51%  github.com/bluesky-social/indigo/mst.(*MerkleSearchTree).getEntries
+    1.50MB 0.043% 96.95%   485.87MB 13.85%  github.com/ipfs/go-ipld-cbor.(*BasicIpldStore).Get
+       1MB 0.029% 96.98%    21.59MB  0.62%  github.com/bluesky-social/indigo/events.HandleRepoStream
+    0.82MB 0.023% 97.00%    25.85MB  0.74%  github.com/bluesky-social/indigo/backfill.(*Gormstore).EnqueueJob
+    0.51MB 0.014% 97.02%    87.09MB  2.48%  net/http.(*http2dataBuffer).lastChunkOrAlloc
+         0     0% 97.02%    30.01MB  0.86%  bufio.(*Reader).Read
+         0     0% 97.02%    29.51MB  0.84%  compress/flate.(*decompressor).Read
+         0     0% 97.02%    29.51MB  0.84%  compress/flate.(*decompressor).nextBlock
+         0     0% 97.02%    29.51MB  0.84%  compress/flate.(*decompressor).readHuffman
+         0     0% 97.02%    29.51MB  0.84%  compress/gzip.(*Reader).Read
+         0     0% 97.02%  3288.45MB 93.77%  github.com/bluesky-social/indigo/backfill.(*Backfiller).BackfillRepo.func2
+         0     0% 97.02%    31.86MB  0.91%  github.com/bluesky-social/indigo/backfill.(*Backfiller).BufferOps
+         0     0% 97.02%    70.39MB  2.01%  github.com/bluesky-social/indigo/backfill.(*Backfiller).HandleEvent
+         0     0% 97.02%    25.03MB  0.71%  github.com/bluesky-social/indigo/backfill.(*Gormstore).GetOrCreateJob
+         0     0% 97.02%    32.58MB  0.93%  github.com/bluesky-social/indigo/backfill.instrumentedReader.Read
+         0     0% 97.02%    70.39MB  2.01%  github.com/bluesky-social/indigo/events.(*RepoStreamCallbacks).EventHandler
+         0     0% 97.02%    70.39MB  2.01%  github.com/bluesky-social/indigo/events/schedulers/autoscaling.(*Scheduler).worker
+         0     0% 97.02%  3285.38MB 93.68%  github.com/bluesky-social/indigo/mst.(*MerkleSearchTree).WalkLeavesFromNocache (inline)
+         0     0% 97.02%   543.88MB 15.51%  github.com/bluesky-social/indigo/mst.(*MerkleSearchTree).findGtOrEqualLeafIndex
+         0     0% 97.02%  3285.38MB 93.68%  github.com/bluesky-social/indigo/mst.(*MerkleSearchTree).walkLeavesFrom
+         0     0% 97.02%    57.02MB  1.63%  github.com/bluesky-social/indigo/mst.entriesFromNodeData
+         0     0% 97.02%  3224.36MB 91.95%  github.com/bluesky-social/indigo/repo.(*readStreamBlockstore).View
+         0     0% 97.02%  3173.85MB 90.50%  github.com/bluesky-social/indigo/repo.(*readStreamBlockstore).get
+         0     0% 97.02%    27.02MB  0.77%  github.com/bluesky-social/indigo/repo.IngestRepo
+         0     0% 97.02%    36.53MB  1.04%  github.com/bluesky-social/indigo/repo.ReadRepoFromCar
+         0     0% 97.02%  3288.45MB 93.77%  github.com/bluesky-social/indigo/repo.StreamRepoRecords
+         0     0% 97.02%  2741.50MB 78.18%  github.com/bluesky-social/indigo/repo.StreamRepoRecords.func2
+         0     0% 97.02%  2922.37MB 83.33%  github.com/bluesky-social/indigo/repo/carutil.(*Reader).NextBlock (inline)
+         0     0% 97.02%  2922.37MB 83.33%  github.com/bluesky-social/indigo/repo/carutil.(*Reader).NextBlockBuf
+         0     0% 97.02%    50.51MB  1.44%  github.com/ipfs/go-ipld-cbor.(*BasicIpldStore).Get.func1
+         0     0% 97.02%    52.01MB  1.48%  github.com/ipfs/go-ipld-cbor.(*BasicIpldStore).decode
+         0     0% 97.02%       30MB  0.86%  github.com/whyrusleeping/cbor-gen.ReadCid
+         0     0% 97.02%    32.58MB  0.93%  go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp.(*wrappedBody).Read
+         0     0% 97.02%    30.01MB  0.86%  io.ReadAtLeast
+         0     0% 97.02%    30.01MB  0.86%  io.ReadFull (inline)
+         0     0% 97.02%    21.59MB  0.62%  main.main.func4
+         0     0% 97.02%    32.58MB  0.93%  net/http.(*cancelTimerBody).Read
+         0     0% 97.02%    89.59MB  2.55%  net/http.(*http2ClientConn).readLoop
+         0     0% 97.02%    87.09MB  2.48%  net/http.(*http2clientConnReadLoop).processData
+         0     0% 97.02%    89.59MB  2.55%  net/http.(*http2clientConnReadLoop).run
+         0     0% 97.02%    87.09MB  2.48%  net/http.(*http2dataBuffer).Write
+         0     0% 97.02%    32.58MB  0.93%  net/http.(*http2gzipReader).Read
+         0     0% 97.02%    87.09MB  2.48%  net/http.(*http2pipe).Write
+         0     0% 97.02%    86.58MB  2.47%  net/http.http2getDataBufferChunk
+         0     0% 97.02%    89.60MB  2.56%  sync.(*Pool).Get
+         0     0% 97.02%    21.59MB  0.62%  tradr-backfiller-relay/relay.(*Relay).RunRelay
+         0     0% 97.02%    70.39MB  2.01%  tradr-backfiller-relay/relay.(*Relay).RunRelay.func1

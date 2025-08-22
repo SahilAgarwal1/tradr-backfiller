@@ -1,6 +1,6 @@
 module tradr-backfiller-relay
 
-go 1.25.0
+go 1.23.0
 
 require (
 	github.com/bluesky-social/indigo v0.0.0-20250505165014-267d4e1fd8ee

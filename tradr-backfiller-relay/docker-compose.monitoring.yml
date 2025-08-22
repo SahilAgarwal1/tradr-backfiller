@@ -41,8 +41,8 @@ services:
   # Mock Ingester client that connects to relay
   mock-ingester:
     build:
-      context: .
-      dockerfile: test/mock-ingester/Dockerfile
+      context: ..
+      dockerfile: tradr-backfiller-relay/test/mock-ingester/Dockerfile
     container_name: relay-monitor-ingester
     command: ["-relay", "relay-monitor:50051", "-stats", "5", "-ack", "100"]
     depends_on:
@@ -76,8 +76,8 @@ services:
       GRPC_SERVER_PORT: "50051"
       RELAY_NAME: "relay-monitor"
       LOG_LEVEL: "debug"
-      PARALLEL_BACKFILLS: "50"
-      PARALLEL_RECORD_CREATES: "20"
+      PARALLEL_BACKFILLS: "30"
+      PARALLEL_RECORD_CREATES: "10"
       GRPC_MAX_MESSAGE_SIZE: "10485760"
       METRICS_PORT: "9090"
     ports:
