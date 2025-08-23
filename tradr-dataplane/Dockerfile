@@ -25,20 +25,12 @@ COPY ./atproto/packages/lexicon ./atproto/packages/lexicon
 COPY ./atproto/packages/repo ./atproto/packages/repo
 COPY ./atproto/packages/xrpc ./atproto/packages/xrpc
 COPY ./atproto/packages/xrpc-server ./atproto/packages/xrpc-server
-COPY ./atproto/packages/aws ./atproto/packages/aws
-COPY ./atproto/packages/lexicon-resolver ./atproto/packages/lexicon-resolver
 
 # Copy internal packages
 COPY ./atproto/packages/internal/fetch-node ./atproto/packages/internal/fetch-node
 COPY ./atproto/packages/internal/fetch ./atproto/packages/internal/fetch
 COPY ./atproto/packages/internal/pipe ./atproto/packages/internal/pipe
 COPY ./atproto/packages/internal/xrpc-utils ./atproto/packages/internal/xrpc-utils
-COPY ./atproto/packages/internal/did-resolver ./atproto/packages/internal/did-resolver
-COPY ./atproto/packages/internal/handle-resolver ./atproto/packages/internal/handle-resolver
-COPY ./atproto/packages/internal/handle-resolver-node ./atproto/packages/internal/handle-resolver-node
-COPY ./atproto/packages/internal/identity-resolver ./atproto/packages/internal/identity-resolver
-COPY ./atproto/packages/internal/simple-store ./atproto/packages/internal/simple-store
-COPY ./atproto/packages/internal/simple-store-memory ./atproto/packages/internal/simple-store-memory
 
 # Copy tradr-dataplane service
 COPY ./tradr-dataplane ./tradr-dataplane
@@ -48,11 +40,14 @@ WORKDIR /app/atproto
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
-# Now link tradr-dataplane to use the workspace packages
+# Clean up dev dependencies and install only production deps
+RUN rm -rf node_modules
+RUN pnpm install --prod --shamefully-hoist --frozen-lockfile --prefer-offline
+
+# Set up NODE_PATH to find @atproto packages
+ENV NODE_PATH=/app/atproto/node_modules:/app/atproto/packages
+
 WORKDIR /app/tradr-dataplane
-# Create a temporary package.json that references the local workspace
-RUN echo '{"name":"tradr-dataplane-service","version":"0.0.0","private":true,"main":"index.js","dependencies":{"@atproto/bsky":"file:../atproto/packages/bsky"}}' > package.json
-RUN npm install --production
 
 # Production stage
 FROM node:20.11-alpine
@@ -65,9 +60,8 @@ ENTRYPOINT ["dumb-init", "--"]
 
 WORKDIR /app
 
-# Copy built atproto packages and tradr-dataplane with dependencies
-COPY --from=build /app/atproto/packages /app/atproto/packages
-COPY --from=build /app/tradr-dataplane /app/tradr-dataplane
+# Copy everything including node_modules with all dependencies
+COPY --from=build /app /app
 
 WORKDIR /app/tradr-dataplane
 

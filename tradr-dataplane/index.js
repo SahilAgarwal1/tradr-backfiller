@@ -2,7 +2,7 @@
 'use strict'
 
 const assert = require('node:assert')
-const { Database, DataPlaneServer } = require('@atproto/bsky')
+const { Database, DataPlaneServer } = require('/app/atproto/packages/bsky/dist/index.js')
 
 const main = async () => {
   const env = getEnv()

@@ -21,6 +21,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Redis cache (optional for dataplane caching)
+  redis:
+    image: redis:7.0-alpine
+    container_name: relay-redis
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - relay-network
+
   # PostgreSQL Exporter for database metrics
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -75,6 +92,31 @@ services:
     networks:
       - relay-network
 
+  # Tradr Data Plane Service
+  tradr-dataplane:
+    build:
+      context: .  # Build from current directory (tradr-backfiller)
+      dockerfile: tradr-dataplane/Dockerfile
+    container_name: tradr-dataplane
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      BSKY_DATAPLANE_DB_POSTGRES_URL: "postgresql://relay:relay@postgres:5432/backfiller_relay"
+      BSKY_DATAPLANE_DB_POSTGRES_SCHEMA: "tradr"
+      BSKY_DATAPLANE_DB_MIGRATE: "1"
+      BSKY_DATAPLANE_PORT: "3000"  # Internal port
+      BSKY_DID_PLC_URL: "https://plc.directory"
+      REDIS_HOST: "redis:6379"
+      NODE_ENV: "development"
+    ports:
+      - "3001:3000"  # Map external 3001 to internal 3000 to avoid conflict with Grafana
+    networks:
+      - relay-network
+
   # Prometheus for metrics collection
   prometheus:
     image: prom/prometheus:latest
@@ -118,6 +160,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
   prometheus_data:
     driver: local
