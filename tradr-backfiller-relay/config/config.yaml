@@ -90,4 +90,4 @@ metrics:
   enable_runtime_metrics: true
 
 # Log level: debug, info, warn, error
-log_level: "info"
+log_level: "warn"

@@ -21,6 +21,9 @@ type Collector struct {
 	operationsSent    prometheus.Counter       // Successfully sent to Ingester
 	operationsAcked   prometheus.Counter       // Acknowledged by Ingester
 	
+	// Backfill metrics
+	reposProcessed    prometheus.Counter       // Total repos processed
+	recordsProcessed  prometheus.Counter       // Total records processed
 	
 	// gRPC message tracking
 	grpcMessagesSent  prometheus.Counter       // Total gRPC messages sent
@@ -84,6 +87,19 @@ func New(serviceName string) *Collector {
 			},
 		),
 		
+		reposProcessed: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_repos_processed_total",
+				Help: "Total number of repositories processed",
+			},
+		),
+		
+		recordsProcessed: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "relay_records_processed_total",
+				Help: "Total number of records processed",
+			},
+		),
 		
 		// gRPC message tracking
 		grpcMessagesSent: prometheus.NewCounter(
@@ -179,6 +195,8 @@ func New(serviceName string) *Collector {
 		c.operationsTotal,
 		c.operationsSent,
 		c.operationsAcked,
+		c.reposProcessed,
+		c.recordsProcessed,
 		c.grpcMessagesSent,
 		c.grpcBytesOut,
 		c.grpcBytesIn,
@@ -258,6 +276,16 @@ func (c *Collector) UpdateConnectionState(address string, index int, state float
 // RecordRepoProcessTime records the time it took to process a repo
 func (c *Collector) RecordRepoProcessTime(duration time.Duration) {
 	c.repoProcessTime.Observe(duration.Seconds())
+}
+
+// IncrementReposProcessed increments the repos processed counter
+func (c *Collector) IncrementReposProcessed() {
+	c.reposProcessed.Inc()
+}
+
+// IncrementRecordsProcessed increments the records processed counter
+func (c *Collector) IncrementRecordsProcessed() {
+	c.recordsProcessed.Inc()
 }
 
 // IncrementGRPCMessagesSent increments the gRPC messages sent counter

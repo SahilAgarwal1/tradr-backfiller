@@ -259,6 +259,11 @@ func overrideFromEnv(cfg *Config) {
 			cfg.Backfiller.ParallelBackfills = p
 		}
 	}
+	if parallel := os.Getenv("PARALLEL_RECORD_CREATES"); parallel != "" {
+		if p, err := strconv.Atoi(parallel); err == nil {
+			cfg.Backfiller.ParallelRecordCreates = p
+		}
+	}
 }
 
 // validate checks that the configuration is valid

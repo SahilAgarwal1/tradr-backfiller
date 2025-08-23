@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"tradr-backfiller-relay/config"
 	"tradr-backfiller-relay/grpc"
 	"tradr-backfiller-relay/metrics"
@@ -38,7 +39,9 @@ func main() {
 
 	// Connect to database (similar to search)
 	log.Info().Msg("Connecting to database")
-	db, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent), // Disable GORM's SQL logging
+	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
@@ -65,7 +68,7 @@ func main() {
 	grpcHandler := grpc.NewHandler(grpcServer, metricsCollector)
 	
 	// Create relay (equivalent to creating Indexer in search)
-	r, err := relay.NewRelay(db, grpcHandler, *cfg)
+	r, err := relay.NewRelay(db, grpcHandler, *cfg, metricsCollector)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize relay")
 	}

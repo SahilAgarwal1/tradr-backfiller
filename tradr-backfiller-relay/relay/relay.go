@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"tradr-backfiller-relay/config"
+	"tradr-backfiller-relay/metrics"
 
 	comatproto "github.com/bluesky-social/indigo/api/atproto"
 	"github.com/bluesky-social/indigo/backfill"
@@ -34,6 +35,9 @@ type Relay struct {
 
 	// Our handler for forwarding operations
 	handler Handler
+
+	// Metrics collector
+	metrics *metrics.Collector
 }
 
 // LastSeq tracks cursor position (same as search)
@@ -43,7 +47,7 @@ type LastSeq struct {
 }
 
 // NewRelay creates a new relay instance (equivalent to NewIndexer in search)
-func NewRelay(db *gorm.DB, handler Handler, cfg config.Config) (*Relay, error) {
+func NewRelay(db *gorm.DB, handler Handler, cfg config.Config, metricsCollector *metrics.Collector) (*Relay, error) {
 	log.Info().Msg("Initializing relay")
 
 	// Run migrations (same as search)
@@ -59,7 +63,7 @@ func NewRelay(db *gorm.DB, handler Handler, cfg config.Config) (*Relay, error) {
 	opts.ParallelRecordCreates = cfg.Backfiller.ParallelRecordCreates
 	opts.NSIDFilter = cfg.Backfiller.NSIDFilter
 	opts.SyncRequestsPerSecond = 100 // Increase from default 2 to allow 100 repos/sec
-	
+
 	// Log the configuration for monitoring
 	log.Info().
 		Int("parallel_backfills", opts.ParallelBackfills).
@@ -73,6 +77,7 @@ func NewRelay(db *gorm.DB, handler Handler, cfg config.Config) (*Relay, error) {
 		relayHost: cfg.Firehose.RelayHost,
 		bfs:       bfstore,
 		handler:   handler,
+		metrics:   metricsCollector,
 	}
 
 	// Create backfiller with our handlers (same pattern as search)
@@ -166,10 +171,16 @@ func (r *Relay) RunRelay(ctx context.Context) error {
 // handleCreateOrUpdate forwards create/update operations to handler
 // Optimized for streaming - data is already in memory, no lookups needed
 func (r *Relay) handleCreateOrUpdate(ctx context.Context, repo string, rev string, path string, recB *[]byte, rcid *cid.Cid) error {
+	// Track metrics
+	if r.metrics != nil {
+		r.metrics.IncrementRecordsProcessed()
+		r.metrics.IncrementOperationCount("create")
+	}
+
 	// With streaming, the record data (*recB) is already loaded
 	// No need for blockstore lookups or additional fetching
 	// This is a major performance improvement over the old approach
-	
+
 	// TEMPORARILY DISABLED: Commenting out gRPC call to measure throughput
 	// When re-enabled, this will be very efficient since data is already in memory
 	// return r.handler.HandleCreateRecord(ctx, repo, rev, path, recB, rcid, 0)
@@ -179,8 +190,14 @@ func (r *Relay) handleCreateOrUpdate(ctx context.Context, repo string, rev strin
 // handleDelete forwards delete operations to handler
 // Optimized for streaming
 func (r *Relay) handleDelete(ctx context.Context, repo string, rev string, path string) error {
+	// Track metrics
+	if r.metrics != nil {
+		r.metrics.IncrementRecordsProcessed()
+		r.metrics.IncrementOperationCount("delete")
+	}
+
 	// Note: seq is 0 for backfilled data (not from firehose)
-	
+
 	// TEMPORARILY DISABLED: Commenting out gRPC call to measure throughput
 	// return r.handler.HandleDeleteRecord(ctx, repo, rev, path, 0)
 	return nil

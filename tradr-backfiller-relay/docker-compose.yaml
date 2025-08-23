@@ -75,7 +75,7 @@ services:
       NSID_FILTER: "app.bsky.feed.post,app.bsky.graph.follow,app.bsky.actor.profile"
       GRPC_SERVER_PORT: "50051"
       RELAY_NAME: "relay-monitor"
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "warn"
       PARALLEL_BACKFILLS: "30"
       PARALLEL_RECORD_CREATES: "10"
       GRPC_MAX_MESSAGE_SIZE: "10485760"
