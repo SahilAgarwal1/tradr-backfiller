@@ -16,8 +16,6 @@ require (
 	gorm.io/gorm v1.30.1
 )
 
-replace github.com/bluesky-social/indigo => ../indigo
-
 require (
 	github.com/RussellLuo/slidingwindow v0.0.0-20200528002341-535bb99d338b // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
